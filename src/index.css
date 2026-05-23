@@ -1,0 +1,31 @@
+@import "tailwindcss";
+
+:root {
+  --accent: #e63946;
+  --accent-dim: rgba(230, 57, 70, 0.12);
+  --bg: #0d0d12;
+  --surface: #13131a;
+  --border: rgba(255, 255, 255, 0.07);
+  --text: rgba(255, 255, 255, 0.85);
+  --muted: rgba(255, 255, 255, 0.38);
+  --faint: rgba(255, 255, 255, 0.05);
+}
+
+* { box-sizing: border-box; }
+
+body {
+  margin: 0;
+  background: var(--bg);
+  color: var(--text);
+  font-family: 'Inter', system-ui, -apple-system, sans-serif;
+  -webkit-font-smoothing: antialiased;
+}
+
+.jp {
+  font-family: 'Hiragino Sans', 'Hiragino Kaku Gothic ProN', 'Noto Sans JP',
+    'Yu Gothic', Meiryo, sans-serif;
+}
+
+::-webkit-scrollbar { width: 4px; }
+::-webkit-scrollbar-track { background: transparent; }
+::-webkit-scrollbar-thumb { background: rgba(255,255,255,0.1); border-radius: 2px; }
