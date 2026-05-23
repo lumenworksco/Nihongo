@@ -1,10 +1,14 @@
 import { useState, useMemo } from 'react';
 import { motion, AnimatePresence } from 'framer-motion';
-import { Search, RotateCcw, ChevronLeft, ChevronRight, BookOpen, Grid, GraduationCap } from 'lucide-react';
+import { Search, RotateCcw, ChevronLeft, ChevronRight, BookOpen, Grid, GraduationCap, ArrowLeftRight } from 'lucide-react';
 import { vocabulary, categories, type Word } from '../data/vocabulary';
-import { useSRS } from '../hooks/useSRS';
+import { useDeck } from '../hooks/useDeck';
+import { useProgress } from '../hooks/useProgress';
+import { buildVocabCards } from '../lib/studyCards';
 import { getStatus, statusMeta, type CardStatus } from '../lib/srs';
 import StudySession from '../components/StudySession';
+
+const vocabCards = buildVocabCards();
 
 const typeColors: Record<Word['type'], string> = {
   noun: '#60a5fa', verb: '#4ade80',
@@ -128,25 +132,28 @@ function FlashCard({ word, onNext, onPrev, index, total }: {
 type Mode = 'browse' | 'flashcard' | 'study';
 
 export default function Vocabulary() {
-  const { states, rate, studyQueue } = useSRS();
-  const [search, setSearch] = useState('');
-  const [category, setCategory] = useState('all');
-  const [mode, setMode] = useState<Mode>('browse');
-  const [flashIndex, setFlashIndex] = useState(0);
+  const [bidirectional, setBidirectional] = useState(false);
+  const { states, rate, undoCard, studyQueue, stats } = useDeck('vocabulary', vocabCards, bidirectional);
+  const { recordSession } = useProgress();
+
+  const [search, setSearch]           = useState('');
+  const [category, setCategory]       = useState('all');
+  const [mode, setMode]               = useState<Mode>('browse');
+  const [flashIndex, setFlashIndex]   = useState(0);
   const [statusFilter, setStatusFilter] = useState<CardStatus | 'all'>('all');
 
   const filtered = useMemo(() => {
     const q = search.toLowerCase();
     return vocabulary.filter(w => {
-      const matchCat = category === 'all' || w.category === category;
-      const matchStatus = statusFilter === 'all' || getStatus(states[w.id]) === statusFilter;
+      const matchCat    = category === 'all' || w.category === category;
+      const matchStatus = statusFilter === 'all' || getStatus(states[`v:${w.id}:j`]) === statusFilter;
       const matchSearch = !q || w.kanji.includes(q) || w.kana.includes(q) || w.romaji.includes(q) || w.meaning.toLowerCase().includes(q);
       return matchCat && matchStatus && matchSearch;
     });
   }, [search, category, statusFilter, states]);
 
   const flashWord = filtered[Math.min(flashIndex, filtered.length - 1)];
-  const dueCount = studyQueue.length;
+  const dueCount  = studyQueue.length;
 
   const modeButtons: { id: Mode; icon: typeof Grid; label: string; badge?: number }[] = [
     { id: 'browse',    icon: Grid,          label: 'Browse' },
@@ -187,30 +194,50 @@ export default function Vocabulary() {
         </div>
       </div>
 
-      {/* Study mode — full session */}
+      {/* Study mode */}
       {mode === 'study' && (
-        dueCount === 0 ? (
-          <div className="flex flex-col items-center gap-4 py-16 text-center">
-            <p className="text-4xl">🎉</p>
-            <p className="text-lg font-semibold text-white">Nothing due right now</p>
-            <p className="text-sm" style={{ color: 'var(--muted)' }}>Come back later or browse new words.</p>
-            <button onClick={() => setMode('browse')} className="mt-2 text-sm underline" style={{ color: 'var(--muted)' }}>
-              Browse vocabulary
+        <>
+          <div className="flex justify-end mb-4">
+            <button
+              onClick={() => setBidirectional(b => !b)}
+              className="flex items-center gap-1.5 px-3 py-1.5 rounded-lg text-xs transition-colors"
+              style={{
+                background: bidirectional ? 'var(--accent-dim)' : 'var(--faint)',
+                color: bidirectional ? 'var(--accent)' : 'var(--muted)',
+                border: `1px solid ${bidirectional ? 'rgba(230,57,70,0.25)' : 'var(--border)'}`,
+              }}
+            >
+              <ArrowLeftRight size={11} />
+              Bidirectional
             </button>
           </div>
-        ) : (
-          <StudySession
-            queue={studyQueue}
-            onRate={rate}
-            onDone={() => setMode('browse')}
-          />
-        )
+
+          {dueCount === 0 ? (
+            <div className="flex flex-col items-center gap-4 py-16 text-center">
+              <p className="text-4xl">🎉</p>
+              <p className="text-lg font-semibold text-white">Nothing due right now</p>
+              <p className="text-sm" style={{ color: 'var(--muted)' }}>Come back later or browse new words.</p>
+              <button onClick={() => setMode('browse')} className="mt-2 text-sm underline" style={{ color: 'var(--muted)' }}>
+                Browse vocabulary
+              </button>
+            </div>
+          ) : (
+            <StudySession
+              queue={studyQueue}
+              onRate={rate}
+              onUndo={undoCard}
+              onComplete={(reviewed, ratings, durationMs) =>
+                recordSession('vocabulary', reviewed, ratings, durationMs)
+              }
+              onBack={() => setMode('browse')}
+            />
+          )}
+        </>
       )}
 
       {/* Browse / Flashcard modes */}
       {mode !== 'study' && (
         <>
-          {/* Search */}
           <div className="relative mb-4">
             <Search size={14} className="absolute left-3 top-1/2 -translate-y-1/2" style={{ color: 'var(--muted)' }} />
             <input
@@ -223,7 +250,6 @@ export default function Vocabulary() {
             />
           </div>
 
-          {/* Category filter */}
           <div className="flex flex-wrap gap-2 mb-3">
             {categories.map(cat => (
               <button
@@ -241,7 +267,6 @@ export default function Vocabulary() {
             ))}
           </div>
 
-          {/* Status filter */}
           <div className="flex flex-wrap gap-2 mb-6">
             {(['all', 'new', 'learning', 'review', 'known'] as const).map(s => {
               const meta = s === 'all' ? null : statusMeta[s];
@@ -258,6 +283,9 @@ export default function Vocabulary() {
                 >
                   {meta && <span className="w-1.5 h-1.5 rounded-full" style={{ background: meta.color }} />}
                   {s === 'all' ? 'All' : meta!.label}
+                  {s !== 'all' && (
+                    <span className="font-mono" style={{ color: 'var(--muted)' }}>{stats[s]}</span>
+                  )}
                 </button>
               );
             })}
@@ -277,7 +305,7 @@ export default function Vocabulary() {
             <motion.div layout className="grid grid-cols-1 sm:grid-cols-2 gap-3">
               <AnimatePresence mode="popLayout">
                 {filtered.map(word => (
-                  <WordCard key={word.id} word={word} status={getStatus(states[word.id])} />
+                  <WordCard key={word.id} word={word} status={getStatus(states[`v:${word.id}:j`])} />
                 ))}
               </AnimatePresence>
             </motion.div>
