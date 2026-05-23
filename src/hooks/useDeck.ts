@@ -1,24 +1,30 @@
 import { useState, useCallback, useMemo } from 'react';
 import { scheduleCard, isDue, getStatus, type Rating, type CardState, type StudyCard, type CardStatus } from '../lib/srs';
-import { loadDeckStates, persistDeckStates } from '../lib/storage';
-
-const MAX_NEW = 10;
+import { loadDeckStates, persistDeckStates, loadSuspended, persistSuspended } from '../lib/storage';
 
 export type DeckStats = Record<CardStatus, number>;
 
-export function useDeck(deckId: string, allCards: StudyCard[], bidirectional: boolean) {
-  const [states, setStates] = useState<Record<string, CardState>>(() => loadDeckStates(deckId));
+export function useDeck(
+  deckId: string,
+  allCards: StudyCard[],
+  bidirectional: boolean,
+  maxNew: number = 10,
+) {
+  const [states, setStates]       = useState<Record<string, CardState>>(() => loadDeckStates(deckId));
+  const [suspended, setSuspended] = useState<Set<string>>(() => loadSuspended());
 
   const activeCards = useMemo(
-    () => bidirectional ? allCards : allCards.filter(c => c.direction === 'jp-en'),
-    [allCards, bidirectional],
+    () =>
+      (bidirectional ? allCards : allCards.filter(c => c.direction === 'jp-en'))
+        .filter(c => !suspended.has(c.cardKey)),
+    [allCards, bidirectional, suspended],
   );
 
   const studyQueue = useMemo(() => {
-    const due = activeCards.filter(c => { const s = states[c.cardKey]; return s && isDue(s); });
-    const fresh = activeCards.filter(c => !states[c.cardKey]).slice(0, MAX_NEW);
+    const due   = activeCards.filter(c => { const s = states[c.cardKey]; return s && isDue(s); });
+    const fresh = activeCards.filter(c => !states[c.cardKey]).slice(0, maxNew);
     return [...due, ...fresh];
-  }, [activeCards, states]);
+  }, [activeCards, states, maxNew]);
 
   const stats = useMemo<DeckStats>(() => {
     const counts: DeckStats = { new: 0, learning: 0, review: 0, known: 0 };
@@ -26,7 +32,6 @@ export function useDeck(deckId: string, allCards: StudyCard[], bidirectional: bo
     return counts;
   }, [activeCards, states]);
 
-  // Returns the previous state so the caller can undo if needed
   const rate = useCallback((cardKey: string, rating: Rating): CardState | null => {
     const prev = states[cardKey] ?? null;
     const next = scheduleCard(prev, rating, cardKey);
@@ -48,5 +53,15 @@ export function useDeck(deckId: string, allCards: StudyCard[], bidirectional: bo
     });
   }, [deckId]);
 
-  return { states, rate, undoCard, studyQueue, stats, activeCards };
+  const toggleSuspend = useCallback((cardKey: string) => {
+    setSuspended(prev => {
+      const next = new Set(prev);
+      if (next.has(cardKey)) next.delete(cardKey);
+      else next.add(cardKey);
+      persistSuspended(next);
+      return next;
+    });
+  }, []);
+
+  return { states, rate, undoCard, studyQueue, stats, activeCards, suspended, toggleSuspend };
 }

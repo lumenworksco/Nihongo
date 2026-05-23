@@ -1,11 +1,12 @@
 import { NavLink } from 'react-router-dom';
-import { BookOpen, Layers, Zap, Home } from 'lucide-react';
+import { BookOpen, Layers, Zap, Home, Settings2 } from 'lucide-react';
 
 const links = [
-  { to: '/', label: 'Home', icon: Home, exact: true },
-  { to: '/vocabulary', label: 'Vocabulary', icon: BookOpen, exact: false },
-  { to: '/grammar', label: 'Grammar', icon: Layers, exact: false },
-  { to: '/particles', label: 'Particles', icon: Zap, exact: false },
+  { to: '/',          label: 'Home',       icon: Home,     exact: true  },
+  { to: '/vocabulary',label: 'Vocabulary', icon: BookOpen, exact: false },
+  { to: '/grammar',   label: 'Grammar',    icon: Layers,   exact: false },
+  { to: '/particles', label: 'Particles',  icon: Zap,      exact: false },
+  { to: '/settings',  label: 'Settings',   icon: Settings2,exact: false },
 ];
 
 export default function Sidebar() {
@@ -21,28 +22,47 @@ export default function Sidebar() {
           <p className="text-xs mt-0.5" style={{ color: 'var(--muted)' }}>Nihongo · N5</p>
         </div>
 
-        {links.map(({ to, label, icon: Icon, exact }) => (
-          <NavLink
-            key={to}
-            to={to}
-            end={exact}
-            className={({ isActive }) =>
-              `flex items-center gap-3 px-3 py-2.5 rounded-lg text-sm transition-colors ${
-                isActive
-                  ? 'text-white font-medium'
-                  : 'hover:text-white'
-              }`
-            }
-            style={({ isActive }) => ({
-              background: isActive ? 'var(--accent-dim)' : 'transparent',
-              color: isActive ? 'white' : 'var(--muted)',
-              border: isActive ? '1px solid rgba(230,57,70,0.2)' : '1px solid transparent',
-            })}
-          >
-            <Icon size={16} />
-            {label}
-          </NavLink>
-        ))}
+        <div className="flex flex-col gap-1 flex-1">
+          {links.slice(0, 4).map(({ to, label, icon: Icon, exact }) => (
+            <NavLink
+              key={to}
+              to={to}
+              end={exact}
+              className={({ isActive }) =>
+                `flex items-center gap-3 px-3 py-2.5 rounded-lg text-sm transition-colors ${
+                  isActive ? 'text-white font-medium' : 'hover:text-white'
+                }`
+              }
+              style={({ isActive }) => ({
+                background: isActive ? 'var(--accent-dim)' : 'transparent',
+                color: isActive ? 'white' : 'var(--muted)',
+                border: isActive ? '1px solid rgba(230,57,70,0.2)' : '1px solid transparent',
+              })}
+            >
+              <Icon size={16} />
+              {label}
+            </NavLink>
+          ))}
+        </div>
+
+        {/* Settings pinned to bottom */}
+        <NavLink
+          to="/settings"
+          end={false}
+          className={({ isActive }) =>
+            `flex items-center gap-3 px-3 py-2.5 rounded-lg text-sm transition-colors ${
+              isActive ? 'text-white font-medium' : 'hover:text-white'
+            }`
+          }
+          style={({ isActive }) => ({
+            background: isActive ? 'var(--accent-dim)' : 'transparent',
+            color: isActive ? 'white' : 'var(--muted)',
+            border: isActive ? '1px solid rgba(230,57,70,0.2)' : '1px solid transparent',
+          })}
+        >
+          <Settings2 size={16} />
+          Settings
+        </NavLink>
       </aside>
 
       {/* Mobile bottom nav */}
@@ -60,9 +80,7 @@ export default function Sidebar() {
             to={to}
             end={exact}
             className="flex-1 flex flex-col items-center gap-1 py-3 text-[10px] transition-colors"
-            style={({ isActive }) => ({
-              color: isActive ? 'var(--accent)' : 'var(--muted)',
-            })}
+            style={({ isActive }) => ({ color: isActive ? 'var(--accent)' : 'var(--muted)' })}
           >
             <Icon size={18} />
             {label}

@@ -65,3 +65,21 @@ export const statusMeta: Record<CardStatus, { label: string; color: string }> = 
   review:   { label: 'Review',   color: 'var(--accent)' },
   known:    { label: 'Known',    color: '#4ade80' },
 };
+
+export function formatDue(state: CardState | undefined): string {
+  if (!state) return 'New';
+  const diff = state.dueDate - Date.now();
+  if (diff <= 0) return 'Due now';
+  const mins = Math.floor(diff / 60_000);
+  if (mins < 60) return `in ${mins}m`;
+  const hrs = Math.floor(diff / 3_600_000);
+  if (hrs < 24) return `in ${hrs}h`;
+  const days = Math.round(diff / 86_400_000);
+  return days === 1 ? 'tomorrow' : `in ${days} days`;
+}
+
+export function formatInterval(state: CardState | undefined): string {
+  if (!state) return '—';
+  if (state.interval <= 0) return '<1 day';
+  return state.interval === 1 ? '1 day' : `${state.interval} days`;
+}

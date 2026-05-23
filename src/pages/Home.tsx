@@ -9,10 +9,13 @@ import { useDeck } from '../hooks/useDeck';
 import { useProgress } from '../hooks/useProgress';
 import { buildVocabCards, buildGrammarCards, buildParticleCards } from '../lib/studyCards';
 import { statusMeta } from '../lib/srs';
+import { loadSettings, type SessionRecord } from '../lib/storage';
 
-const vocabCards   = buildVocabCards();
-const grammarCards = buildGrammarCards();
+const vocabCards    = buildVocabCards();
+const grammarCards  = buildGrammarCards();
 const particleCards = buildParticleCards();
+
+const DAY_LABELS = ['Su', 'Mo', 'Tu', 'We', 'Th', 'Fr', 'Sa'];
 
 const item = {
   hidden: { opacity: 0, y: 20 },
@@ -20,12 +23,101 @@ const item = {
 };
 const container = { hidden: {}, show: { transition: { staggerChildren: 0.08 } } };
 
-const DAY_LABELS = ['Su', 'Mo', 'Tu', 'We', 'Th', 'Fr', 'Sa'];
+const DECK_COLORS: Record<string, string> = {
+  vocabulary: '#4ade80',
+  grammar:    '#60a5fa',
+  particles:  'var(--accent)',
+};
+
+function formatHistoryDate(dateStr: string): string {
+  const today = new Date().toISOString().slice(0, 10);
+  const d = new Date(); d.setDate(d.getDate() - 1);
+  const yesterday = d.toISOString().slice(0, 10);
+  if (dateStr === today)     return 'Today';
+  if (dateStr === yesterday) return 'Yesterday';
+  const dt = new Date(dateStr + 'T00:00:00');
+  return dt.toLocaleDateString('en-US', { month: 'short', day: 'numeric' });
+}
+
+function formatDuration(ms: number): string {
+  const s = Math.round(ms / 1000);
+  if (s < 60) return `${s}s`;
+  const m = Math.floor(s / 60);
+  const rs = s % 60;
+  return rs > 0 ? `${m}m ${rs}s` : `${m}m`;
+}
+
+function SessionRow({ r }: { r: SessionRecord }) {
+  const accuracy = Math.round(((r.ratings.good + r.ratings.easy) / r.reviewed) * 100);
+  const color = DECK_COLORS[r.deck] ?? 'var(--muted)';
+  return (
+    <div className="flex items-center gap-3 py-2.5 px-1">
+      <span
+        className="text-[10px] px-2 py-0.5 rounded-full font-medium shrink-0 capitalize"
+        style={{ background: `${color}15`, color, border: `1px solid ${color}30` }}
+      >
+        {r.deck}
+      </span>
+      <span className="text-xs shrink-0" style={{ color: 'var(--muted)' }}>
+        {formatHistoryDate(r.date)}
+      </span>
+      <span className="flex-1" />
+      <span className="text-xs font-mono" style={{ color: 'var(--muted)' }}>
+        {r.reviewed} cards
+      </span>
+      <span className="text-xs font-mono" style={{ color: r.reviewed > 0 && accuracy >= 70 ? '#4ade80' : 'var(--muted)' }}>
+        {r.reviewed > 0 ? `${accuracy}%` : '—'}
+      </span>
+      <span className="text-xs font-mono shrink-0" style={{ color: 'rgba(255,255,255,0.2)' }}>
+        {formatDuration(r.durationMs)}
+      </span>
+    </div>
+  );
+}
+
+function DeckProgress({ label, jp, studied, total, stats, color }: {
+  label: string; jp: string; studied: number; total: number;
+  stats: Record<string, number>; color: string;
+}) {
+  const pct = total > 0 ? Math.round((studied / total) * 100) : 0;
+  return (
+    <div>
+      <div className="flex items-center justify-between mb-2">
+        <div className="flex items-baseline gap-2">
+          <span className="text-sm font-medium text-white">{label}</span>
+          <span className="jp text-xs" style={{ color }}>{jp}</span>
+        </div>
+        <span className="text-xs font-mono" style={{ color: 'var(--muted)' }}>
+          {studied}/{total} · {pct}%
+        </span>
+      </div>
+      <div className="h-1.5 rounded-full mb-2" style={{ background: 'var(--faint)' }}>
+        <motion.div
+          className="h-full rounded-full"
+          style={{ background: color }}
+          initial={{ width: 0 }}
+          animate={{ width: `${pct}%` }}
+          transition={{ duration: 0.7, delay: 0.2 }}
+        />
+      </div>
+      <div className="flex gap-2">
+        {(['new', 'learning', 'review', 'known'] as const).map(s => (
+          <div key={s} className="flex-1 flex flex-col items-center gap-0.5 py-1.5 rounded-lg" style={{ background: 'var(--faint)' }}>
+            <span className="text-sm font-bold" style={{ color: statusMeta[s].color }}>{stats[s]}</span>
+            <span className="text-[9px]" style={{ color: 'var(--muted)' }}>{statusMeta[s].label}</span>
+          </div>
+        ))}
+      </div>
+    </div>
+  );
+}
 
 export default function Home() {
-  const vocab       = useDeck('vocabulary', vocabCards, false);
-  const grammar     = useDeck('grammar', grammarCards, false);
-  const particlesDeck = useDeck('particles', particleCards, false);
+  const maxNew = useMemo(() => loadSettings().maxNewCards, []);
+
+  const vocab         = useDeck('vocabulary', vocabCards,    false, maxNew);
+  const grammar       = useDeck('grammar',    grammarCards,  false, maxNew);
+  const particlesDeck = useDeck('particles',  particleCards, false, maxNew);
   const { streak, history } = useProgress();
 
   const totalDue = vocab.studyQueue.length + grammar.studyQueue.length + particlesDeck.studyQueue.length;
@@ -44,22 +136,23 @@ export default function Home() {
       const d = new Date();
       d.setDate(d.getDate() - i);
       const dateStr = d.toISOString().slice(0, 10);
-      const reviewed = history
-        .filter(s => s.date === dateStr)
-        .reduce((sum, s) => sum + s.reviewed, 0);
+      const reviewed = history.filter(s => s.date === dateStr).reduce((sum, s) => sum + s.reviewed, 0);
       days.push({ label: DAY_LABELS[d.getDay()], reviewed });
     }
     return days;
   }, [history]);
 
   const maxReviewed = Math.max(...last7.map(d => d.reviewed), 1);
-  const totalStudied = vocabulary.length - vocab.stats.new;
-  const pct = Math.round((totalStudied / vocabulary.length) * 100);
+
+  const recentSessions = useMemo(
+    () => [...history].reverse().slice(0, 10),
+    [history],
+  );
 
   const sections = [
-    { to: '/vocabulary', icon: BookOpen, title: 'Vocabulary', jp: '語彙', desc: `${vocabulary.length} N5 words across 8 categories`, color: '#4ade80', due: vocab.studyQueue.length },
-    { to: '/grammar',    icon: Layers,   title: 'Grammar',    jp: '文法', desc: `${grammarPoints.length} essential N5 patterns`,         color: '#60a5fa', due: grammar.studyQueue.length },
-    { to: '/particles',  icon: Zap,      title: 'Particles',  jp: '助詞', desc: `${particles.length} particles with usage rules`,        color: 'var(--accent)', due: particlesDeck.studyQueue.length },
+    { to: '/vocabulary', icon: BookOpen, title: 'Vocabulary', jp: '語彙', desc: `${vocabulary.length} N5 words`, color: '#4ade80', due: vocab.studyQueue.length },
+    { to: '/grammar',    icon: Layers,   title: 'Grammar',    jp: '文法', desc: `${grammarPoints.length} patterns`,  color: '#60a5fa', due: grammar.studyQueue.length },
+    { to: '/particles',  icon: Zap,      title: 'Particles',  jp: '助詞', desc: `${particles.length} particles`,    color: 'var(--accent)', due: particlesDeck.studyQueue.length },
   ];
 
   return (
@@ -105,7 +198,7 @@ export default function Home() {
           {last7.map((d, i) => (
             <div key={i} className="flex-1 flex flex-col items-center justify-end gap-1" style={{ height: '64px' }}>
               <div
-                className="w-full rounded-sm transition-all"
+                className="w-full rounded-sm"
                 style={{
                   height: `${Math.max((d.reviewed / maxReviewed) * 44, d.reviewed > 0 ? 4 : 2)}px`,
                   background: d.reviewed > 0 ? 'var(--accent)' : 'var(--faint)',
@@ -116,40 +209,51 @@ export default function Home() {
             </div>
           ))}
         </div>
+
+        {/* Recent sessions */}
+        {recentSessions.length > 0 && (
+          <div className="mt-4 pt-4" style={{ borderTop: '1px solid var(--border)' }}>
+            <p className="text-[10px] font-mono uppercase tracking-widest mb-1" style={{ color: 'var(--muted)' }}>
+              Recent sessions
+            </p>
+            <div className="divide-y" style={{ borderColor: 'var(--border)' }}>
+              {recentSessions.map((r, i) => (
+                <SessionRow key={i} r={r} />
+              ))}
+            </div>
+          </div>
+        )}
       </motion.div>
 
-      {/* Vocabulary progress */}
+      {/* Progress cards */}
       <motion.div
         initial={{ opacity: 0, y: 16 }} animate={{ opacity: 1, y: 0 }} transition={{ duration: 0.45, delay: 0.15 }}
-        className="rounded-2xl p-5 mb-4"
+        className="rounded-2xl p-5 mb-4 flex flex-col gap-6"
         style={{ background: 'var(--surface)', border: '1px solid var(--border)' }}
       >
-        <div className="flex items-center justify-between mb-4">
-          <div>
-            <p className="text-sm font-medium text-white">Vocabulary progress</p>
-            <p className="text-xs mt-0.5" style={{ color: 'var(--muted)' }}>
-              {totalStudied} / {vocabulary.length} words studied
-            </p>
-          </div>
-          <span className="text-sm font-mono" style={{ color: 'var(--muted)' }}>{pct}%</span>
-        </div>
-        <div className="h-1.5 rounded-full mb-4" style={{ background: 'var(--faint)' }}>
-          <motion.div
-            className="h-full rounded-full"
-            style={{ background: 'var(--accent)' }}
-            initial={{ width: 0 }}
-            animate={{ width: `${pct}%` }}
-            transition={{ duration: 0.8, delay: 0.3 }}
-          />
-        </div>
-        <div className="grid grid-cols-4 gap-2">
-          {(['new', 'learning', 'review', 'known'] as const).map(s => (
-            <div key={s} className="flex flex-col items-center gap-1 py-2 rounded-xl" style={{ background: 'var(--faint)' }}>
-              <span className="text-lg font-bold" style={{ color: statusMeta[s].color }}>{vocab.stats[s]}</span>
-              <span className="text-[10px]" style={{ color: 'var(--muted)' }}>{statusMeta[s].label}</span>
-            </div>
-          ))}
-        </div>
+        <DeckProgress
+          label="Vocabulary" jp="語彙"
+          studied={vocabulary.length - vocab.stats.new}
+          total={vocabulary.length}
+          stats={vocab.stats}
+          color="#4ade80"
+        />
+        <div style={{ borderTop: '1px solid var(--border)' }} />
+        <DeckProgress
+          label="Grammar" jp="文法"
+          studied={grammarPoints.length - grammar.stats.new}
+          total={grammarPoints.length}
+          stats={grammar.stats}
+          color="#60a5fa"
+        />
+        <div style={{ borderTop: '1px solid var(--border)' }} />
+        <DeckProgress
+          label="Particles" jp="助詞"
+          studied={particles.length - particlesDeck.stats.new}
+          total={particles.length}
+          stats={particlesDeck.stats}
+          color="var(--accent)"
+        />
       </motion.div>
 
       {/* Section links */}

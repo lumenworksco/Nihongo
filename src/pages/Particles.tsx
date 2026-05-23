@@ -1,22 +1,35 @@
-import { useState } from 'react';
+import { useState, useMemo } from 'react';
 import { motion, AnimatePresence } from 'framer-motion';
-import { ChevronDown, GraduationCap, ArrowLeftRight } from 'lucide-react';
+import { ChevronDown, GraduationCap, ArrowLeftRight, EyeOff, Eye } from 'lucide-react';
 import { particles, type Particle } from '../data/particles';
 import { useDeck } from '../hooks/useDeck';
 import { useProgress } from '../hooks/useProgress';
 import { buildParticleCards } from '../lib/studyCards';
+import { getStatus, statusMeta, formatDue, formatInterval, type CardState } from '../lib/srs';
+import { loadSettings } from '../lib/storage';
 import StudySession from '../components/StudySession';
 
 const particleCards = buildParticleCards();
 
-function ParticleCard({ p }: { p: Particle }) {
+function ParticleCard({ p, state, isSuspended, onToggleSuspend }: {
+  p: Particle;
+  state: CardState | undefined;
+  isSuspended: boolean;
+  onToggleSuspend: () => void;
+}) {
   const [open, setOpen] = useState(false);
+  const status = getStatus(state);
+  const { color } = statusMeta[status];
 
   return (
     <motion.div
       layout
       className="rounded-xl overflow-hidden"
-      style={{ background: 'var(--surface)', border: '1px solid var(--border)' }}
+      style={{
+        background: 'var(--surface)',
+        border: `1px solid ${isSuspended ? 'rgba(255,255,255,0.04)' : 'var(--border)'}`,
+        opacity: isSuspended ? 0.55 : 1,
+      }}
     >
       <button
         onClick={() => setOpen(o => !o)}
@@ -29,9 +42,13 @@ function ParticleCard({ p }: { p: Particle }) {
           {p.particle}
         </div>
         <div className="flex-1 min-w-0">
-          <div className="flex items-baseline gap-2">
+          <div className="flex items-baseline gap-2 flex-wrap">
             <span className="font-semibold text-white">{p.name}</span>
             <span className="text-xs font-mono" style={{ color: 'var(--muted)' }}>({p.romaji})</span>
+            {/* Status pill */}
+            <span className="text-[10px] px-1.5 py-0.5 rounded-full ml-auto" style={{ background: `${color}15`, color }}>
+              {statusMeta[status].label}
+            </span>
           </div>
           <p className="text-sm mt-0.5 truncate" style={{ color: 'var(--muted)' }}>{p.summary}</p>
         </div>
@@ -53,19 +70,11 @@ function ParticleCard({ p }: { p: Particle }) {
             <div className="px-5 pb-5 flex flex-col gap-5" style={{ borderTop: '1px solid var(--border)' }}>
               {p.usages.map((usage, ui) => (
                 <div key={ui} className="pt-4">
-                  <p className="text-xs font-mono uppercase tracking-widest mb-3" style={{ color: 'var(--accent)' }}>
-                    {usage.label}
-                  </p>
-                  <p className="text-sm leading-relaxed mb-3" style={{ color: 'rgba(255,255,255,0.6)' }}>
-                    {usage.explanation}
-                  </p>
+                  <p className="text-xs font-mono uppercase tracking-widest mb-3" style={{ color: 'var(--accent)' }}>{usage.label}</p>
+                  <p className="text-sm leading-relaxed mb-3" style={{ color: 'rgba(255,255,255,0.6)' }}>{usage.explanation}</p>
                   <div className="flex flex-col gap-2">
                     {usage.examples.map((ex, ei) => (
-                      <div
-                        key={ei}
-                        className="px-4 py-3 rounded-lg"
-                        style={{ background: 'var(--faint)', borderLeft: '2px solid var(--accent)' }}
-                      >
+                      <div key={ei} className="px-4 py-3 rounded-lg" style={{ background: 'var(--faint)', borderLeft: '2px solid var(--accent)' }}>
                         <p className="jp text-white text-sm mb-0.5">{ex.jp}</p>
                         <p className="text-xs" style={{ color: 'var(--muted)' }}>{ex.en}</p>
                       </div>
@@ -75,32 +84,45 @@ function ParticleCard({ p }: { p: Particle }) {
               ))}
 
               {p.tip && (
-                <div
-                  className="px-4 py-3 rounded-lg text-sm"
-                  style={{ background: 'rgba(251,191,36,0.05)', border: '1px solid rgba(251,191,36,0.15)', color: '#fbbf24' }}
-                >
+                <div className="px-4 py-3 rounded-lg text-sm" style={{ background: 'rgba(251,191,36,0.05)', border: '1px solid rgba(251,191,36,0.15)', color: '#fbbf24' }}>
                   💡 {p.tip}
                 </div>
               )}
 
               {p.confusedWith && (
                 <div>
-                  <p className="text-xs font-mono uppercase tracking-widest mb-2" style={{ color: 'var(--muted)' }}>
-                    Often confused with
-                  </p>
+                  <p className="text-xs font-mono uppercase tracking-widest mb-2" style={{ color: 'var(--muted)' }}>Often confused with</p>
                   <div className="flex gap-2 flex-wrap">
                     {p.confusedWith.map(c => (
-                      <span
-                        key={c}
-                        className="jp px-3 py-1.5 rounded-lg text-lg font-bold"
-                        style={{ background: 'rgba(255,255,255,0.04)', border: '1px solid var(--border)', color: 'rgba(255,255,255,0.7)' }}
-                      >
+                      <span key={c} className="jp px-3 py-1.5 rounded-lg text-lg font-bold" style={{ background: 'rgba(255,255,255,0.04)', border: '1px solid var(--border)', color: 'rgba(255,255,255,0.7)' }}>
                         {c}
                       </span>
                     ))}
                   </div>
                 </div>
               )}
+
+              {/* Card details */}
+              <div className="pt-1" style={{ borderTop: '1px solid var(--border)' }}>
+                <p className="text-xs font-mono uppercase tracking-widest mb-2" style={{ color: 'var(--muted)' }}>Card info</p>
+                <div className="flex flex-wrap gap-x-4 gap-y-1 mb-3">
+                  <span className="text-[11px] font-mono" style={{ color: 'var(--muted)' }}>interval: {formatInterval(state)}</span>
+                  <span className="text-[11px] font-mono" style={{ color: 'var(--muted)' }}>due: {formatDue(state)}</span>
+                  {state && <span className="text-[11px] font-mono" style={{ color: 'var(--muted)' }}>ease: {state.easeFactor.toFixed(2)}</span>}
+                </div>
+                <button
+                  onClick={e => { e.stopPropagation(); onToggleSuspend(); }}
+                  className="flex items-center gap-1.5 px-2.5 py-1 rounded-lg text-xs transition-colors"
+                  style={{
+                    background: isSuspended ? 'rgba(96,165,250,0.1)' : 'rgba(255,255,255,0.04)',
+                    color: isSuspended ? '#60a5fa' : 'var(--muted)',
+                    border: `1px solid ${isSuspended ? 'rgba(96,165,250,0.2)' : 'var(--border)'}`,
+                  }}
+                >
+                  {isSuspended ? <Eye size={11} /> : <EyeOff size={11} />}
+                  {isSuspended ? 'Unsuspend' : 'Suspend card'}
+                </button>
+              </div>
             </div>
           </motion.div>
         )}
@@ -112,10 +134,12 @@ function ParticleCard({ p }: { p: Particle }) {
 type Mode = 'browse' | 'study';
 
 export default function Particles() {
+  const maxNew = useMemo(() => loadSettings().maxNewCards, []);
   const [mode, setMode]                   = useState<Mode>('browse');
   const [bidirectional, setBidirectional] = useState(false);
-  const { rate, undoCard, studyQueue }    = useDeck('particles', particleCards, bidirectional);
-  const { recordSession }                 = useProgress();
+  const { states, rate, undoCard, studyQueue, suspended, toggleSuspend } =
+    useDeck('particles', particleCards, bidirectional, maxNew);
+  const { recordSession } = useProgress();
 
   const dueCount = studyQueue.length;
 
@@ -124,9 +148,7 @@ export default function Particles() {
       <div className="flex items-center justify-between mb-8">
         <div>
           <h1 className="text-xl font-semibold text-white">Particles</h1>
-          <p className="jp text-sm mt-0.5" style={{ color: 'var(--muted)' }}>
-            助詞 · {particles.length} particles
-          </p>
+          <p className="jp text-sm mt-0.5" style={{ color: 'var(--muted)' }}>助詞 · {particles.length} particles</p>
         </div>
         <div className="flex items-center gap-2">
           {mode === 'study' && (
@@ -155,10 +177,7 @@ export default function Particles() {
             <GraduationCap size={12} />
             Study
             {dueCount > 0 && mode !== 'study' && (
-              <span
-                className="absolute -top-1 -right-1 w-4 h-4 rounded-full text-[9px] flex items-center justify-center font-bold"
-                style={{ background: 'var(--accent)', color: '#fff' }}
-              >
+              <span className="absolute -top-1 -right-1 w-4 h-4 rounded-full text-[9px] flex items-center justify-center font-bold" style={{ background: 'var(--accent)', color: '#fff' }}>
                 {dueCount > 99 ? '99+' : dueCount}
               </span>
             )}
@@ -172,9 +191,7 @@ export default function Particles() {
             <p className="text-4xl">🎉</p>
             <p className="text-lg font-semibold text-white">Nothing due right now</p>
             <p className="text-sm" style={{ color: 'var(--muted)' }}>Come back later or review the particles below.</p>
-            <button onClick={() => setMode('browse')} className="mt-2 text-sm underline" style={{ color: 'var(--muted)' }}>
-              Browse particles
-            </button>
+            <button onClick={() => setMode('browse')} className="mt-2 text-sm underline" style={{ color: 'var(--muted)' }}>Browse particles</button>
           </div>
         ) : (
           <StudySession
@@ -209,7 +226,15 @@ export default function Particles() {
           <div className="flex flex-col gap-3">
             {particles.map(p => (
               <div key={p.particle} id={`particle-${p.particle}`}>
-                <ParticleCard p={p} />
+                <ParticleCard
+                  p={p}
+                  state={states[`p:${p.particle}:j`]}
+                  isSuspended={suspended.has(`p:${p.particle}:j`)}
+                  onToggleSuspend={() => {
+                    toggleSuspend(`p:${p.particle}:j`);
+                    toggleSuspend(`p:${p.particle}:e`);
+                  }}
+                />
               </div>
             ))}
           </div>

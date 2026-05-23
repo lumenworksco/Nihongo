@@ -1,8 +1,10 @@
 import type { CardState } from './srs';
 
-const DECK_KEY = (id: string) => `nihongo_srs_${id}_v2`;
-const STREAK_KEY = 'nihongo_streak_v1';
-const HISTORY_KEY = 'nihongo_history_v1';
+const DECK_KEY      = (id: string) => `nihongo_srs_${id}_v2`;
+const STREAK_KEY    = 'nihongo_streak_v1';
+const HISTORY_KEY   = 'nihongo_history_v1';
+const SETTINGS_KEY  = 'nihongo_settings_v1';
+const SUSPENDED_KEY = 'nihongo_suspended_v1';
 
 // ── SRS deck state ─────────────────────────────────────────────────────────────
 
@@ -73,4 +75,40 @@ export function saveSession(session: Omit<SessionRecord, 'date' | 'timestamp'>) 
   history.push({ ...session, date: todayStr(), timestamp: Date.now() });
   if (history.length > 90) history.splice(0, history.length - 90);
   localStorage.setItem(HISTORY_KEY, JSON.stringify(history));
+}
+
+// ── Settings ───────────────────────────────────────────────────────────────────
+
+export interface AppSettings {
+  maxNewCards: number;
+}
+
+const DEFAULT_SETTINGS: AppSettings = { maxNewCards: 10 };
+
+export function loadSettings(): AppSettings {
+  try {
+    return { ...DEFAULT_SETTINGS, ...JSON.parse(localStorage.getItem(SETTINGS_KEY) ?? '{}') };
+  } catch {
+    return DEFAULT_SETTINGS;
+  }
+}
+
+export function saveSettings(s: AppSettings): void {
+  localStorage.setItem(SETTINGS_KEY, JSON.stringify(s));
+}
+
+// ── Suspended cards ────────────────────────────────────────────────────────────
+
+export function loadSuspended(): Set<string> {
+  try { return new Set<string>(JSON.parse(localStorage.getItem(SUSPENDED_KEY) ?? '[]')); }
+  catch { return new Set<string>(); }
+}
+
+export function persistSuspended(suspended: Set<string>): void {
+  localStorage.setItem(SUSPENDED_KEY, JSON.stringify([...suspended]));
+}
+
+// Reset a deck completely
+export function resetDeck(deckId: string): void {
+  localStorage.removeItem(DECK_KEY(deckId));
 }

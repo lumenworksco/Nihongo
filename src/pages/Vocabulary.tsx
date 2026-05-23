@@ -1,11 +1,12 @@
 import { useState, useMemo } from 'react';
 import { motion, AnimatePresence } from 'framer-motion';
-import { Search, RotateCcw, ChevronLeft, ChevronRight, BookOpen, Grid, GraduationCap, ArrowLeftRight } from 'lucide-react';
+import { Search, RotateCcw, ChevronLeft, ChevronRight, BookOpen, Grid, GraduationCap, ArrowLeftRight, ChevronDown, EyeOff, Eye } from 'lucide-react';
 import { vocabulary, categories, type Word } from '../data/vocabulary';
 import { useDeck } from '../hooks/useDeck';
 import { useProgress } from '../hooks/useProgress';
 import { buildVocabCards } from '../lib/studyCards';
-import { getStatus, statusMeta, type CardStatus } from '../lib/srs';
+import { getStatus, statusMeta, formatDue, formatInterval, type CardStatus, type CardState } from '../lib/srs';
+import { loadSettings } from '../lib/storage';
 import StudySession from '../components/StudySession';
 
 const vocabCards = buildVocabCards();
@@ -20,17 +21,16 @@ const typeLabels: Record<Word['type'], string> = {
   'adjective-na': 'な-adj', adverb: 'adv', expression: 'expr',
 };
 
-function StatusDot({ status }: { status: CardStatus }) {
+function WordCard({ word, state, isSuspended, onToggleSuspend }: {
+  word: Word;
+  state: CardState | undefined;
+  isSuspended: boolean;
+  onToggleSuspend: () => void;
+}) {
+  const [showDetails, setShowDetails] = useState(false);
+  const status = getStatus(state);
   const { color } = statusMeta[status];
-  return (
-    <span
-      className="inline-block w-2 h-2 rounded-full shrink-0"
-      style={{ background: color, boxShadow: `0 0 4px ${color}80` }}
-    />
-  );
-}
 
-function WordCard({ word, status }: { word: Word; status: CardStatus }) {
   return (
     <motion.div
       layout
@@ -39,38 +39,93 @@ function WordCard({ word, status }: { word: Word; status: CardStatus }) {
       exit={{ opacity: 0, scale: 0.95 }}
       transition={{ duration: 0.2 }}
       className="p-4 rounded-xl flex flex-col gap-2"
-      style={{ background: 'var(--surface)', border: '1px solid var(--border)' }}
+      style={{
+        background: 'var(--surface)',
+        border: `1px solid ${isSuspended ? 'rgba(255,255,255,0.04)' : 'var(--border)'}`,
+        opacity: isSuspended ? 0.5 : 1,
+      }}
     >
       <div className="flex items-start justify-between gap-2">
         <div className="flex items-center gap-2">
-          <StatusDot status={status} />
+          <span className="inline-block w-2 h-2 rounded-full shrink-0" style={{ background: color, boxShadow: `0 0 4px ${color}80` }} />
           <p className="jp text-2xl font-bold text-white leading-tight">{word.kanji}</p>
         </div>
-        <span
-          className="text-[10px] px-2 py-0.5 rounded-full shrink-0 mt-1"
-          style={{
-            background: `${typeColors[word.type]}18`,
-            color: typeColors[word.type],
-            border: `1px solid ${typeColors[word.type]}30`,
-          }}
-        >
-          {typeLabels[word.type]}
-        </span>
+        <div className="flex items-center gap-1 mt-0.5">
+          <span
+            className="text-[10px] px-2 py-0.5 rounded-full"
+            style={{ background: `${typeColors[word.type]}18`, color: typeColors[word.type], border: `1px solid ${typeColors[word.type]}30` }}
+          >
+            {typeLabels[word.type]}
+          </span>
+          <button
+            onClick={() => setShowDetails(d => !d)}
+            className="p-1 rounded transition-colors"
+            style={{ color: 'var(--muted)' }}
+            title="Card details"
+          >
+            <motion.div animate={{ rotate: showDetails ? 180 : 0 }} transition={{ duration: 0.2 }}>
+              <ChevronDown size={12} />
+            </motion.div>
+          </button>
+        </div>
       </div>
+
       <div>
         <p className="jp text-sm" style={{ color: 'rgba(255,255,255,0.55)' }}>{word.kana}</p>
         <p className="text-xs font-mono" style={{ color: 'var(--muted)' }}>{word.romaji}</p>
       </div>
       <p className="text-sm text-white">{word.meaning}</p>
+
       {word.example && (
-        <div
-          className="mt-1 p-2.5 rounded-lg text-xs"
-          style={{ background: 'var(--faint)', borderLeft: '2px solid var(--accent)' }}
-        >
+        <div className="mt-1 p-2.5 rounded-lg text-xs" style={{ background: 'var(--faint)', borderLeft: '2px solid var(--accent)' }}>
           <p className="jp text-white mb-0.5">{word.example.jp}</p>
           <p style={{ color: 'var(--muted)' }}>{word.example.en}</p>
         </div>
       )}
+
+      <AnimatePresence initial={false}>
+        {showDetails && (
+          <motion.div
+            key="details"
+            initial={{ opacity: 0, height: 0 }}
+            animate={{ opacity: 1, height: 'auto' }}
+            exit={{ opacity: 0, height: 0 }}
+            transition={{ duration: 0.2 }}
+            style={{ overflow: 'hidden' }}
+          >
+            <div className="pt-2 mt-1 flex flex-col gap-2" style={{ borderTop: '1px solid var(--border)' }}>
+              <div className="flex flex-wrap gap-x-4 gap-y-1">
+                <span className="text-[11px]" style={{ color }}>
+                  {statusMeta[status].label}
+                </span>
+                <span className="text-[11px] font-mono" style={{ color: 'var(--muted)' }}>
+                  interval: {formatInterval(state)}
+                </span>
+                <span className="text-[11px] font-mono" style={{ color: 'var(--muted)' }}>
+                  due: {formatDue(state)}
+                </span>
+                {state && (
+                  <span className="text-[11px] font-mono" style={{ color: 'var(--muted)' }}>
+                    ease: {state.easeFactor.toFixed(2)}
+                  </span>
+                )}
+              </div>
+              <button
+                onClick={e => { e.stopPropagation(); onToggleSuspend(); }}
+                className="self-start flex items-center gap-1.5 px-2.5 py-1 rounded-lg text-xs transition-colors"
+                style={{
+                  background: isSuspended ? 'rgba(96,165,250,0.1)' : 'rgba(255,255,255,0.04)',
+                  color: isSuspended ? '#60a5fa' : 'var(--muted)',
+                  border: `1px solid ${isSuspended ? 'rgba(96,165,250,0.2)' : 'var(--border)'}`,
+                }}
+              >
+                {isSuspended ? <Eye size={11} /> : <EyeOff size={11} />}
+                {isSuspended ? 'Unsuspend' : 'Suspend card'}
+              </button>
+            </div>
+          </motion.div>
+        )}
+      </AnimatePresence>
     </motion.div>
   );
 }
@@ -132,14 +187,16 @@ function FlashCard({ word, onNext, onPrev, index, total }: {
 type Mode = 'browse' | 'flashcard' | 'study';
 
 export default function Vocabulary() {
+  const maxNew = useMemo(() => loadSettings().maxNewCards, []);
   const [bidirectional, setBidirectional] = useState(false);
-  const { states, rate, undoCard, studyQueue, stats } = useDeck('vocabulary', vocabCards, bidirectional);
+  const { states, rate, undoCard, studyQueue, stats, suspended, toggleSuspend } =
+    useDeck('vocabulary', vocabCards, bidirectional, maxNew);
   const { recordSession } = useProgress();
 
-  const [search, setSearch]           = useState('');
-  const [category, setCategory]       = useState('all');
-  const [mode, setMode]               = useState<Mode>('browse');
-  const [flashIndex, setFlashIndex]   = useState(0);
+  const [search, setSearch]             = useState('');
+  const [category, setCategory]         = useState('all');
+  const [mode, setMode]                 = useState<Mode>('browse');
+  const [flashIndex, setFlashIndex]     = useState(0);
   const [statusFilter, setStatusFilter] = useState<CardStatus | 'all'>('all');
 
   const filtered = useMemo(() => {
@@ -182,10 +239,7 @@ export default function Vocabulary() {
               <Icon size={12} />
               {label}
               {badge != null && badge > 0 && (
-                <span
-                  className="absolute -top-1 -right-1 w-4 h-4 rounded-full text-[9px] flex items-center justify-center font-bold"
-                  style={{ background: 'var(--accent)', color: '#fff' }}
-                >
+                <span className="absolute -top-1 -right-1 w-4 h-4 rounded-full text-[9px] flex items-center justify-center font-bold" style={{ background: 'var(--accent)', color: '#fff' }}>
                   {badge > 99 ? '99+' : badge}
                 </span>
               )}
@@ -305,7 +359,16 @@ export default function Vocabulary() {
             <motion.div layout className="grid grid-cols-1 sm:grid-cols-2 gap-3">
               <AnimatePresence mode="popLayout">
                 {filtered.map(word => (
-                  <WordCard key={word.id} word={word} status={getStatus(states[`v:${word.id}:j`])} />
+                  <WordCard
+                    key={word.id}
+                    word={word}
+                    state={states[`v:${word.id}:j`]}
+                    isSuspended={suspended.has(`v:${word.id}:j`)}
+                    onToggleSuspend={() => {
+                      toggleSuspend(`v:${word.id}:j`);
+                      toggleSuspend(`v:${word.id}:e`);
+                    }}
+                  />
                 ))}
               </AnimatePresence>
             </motion.div>
