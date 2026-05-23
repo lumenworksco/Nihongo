@@ -1,6 +1,8 @@
 import { useState, useCallback, useMemo } from 'react';
 import { scheduleCard, isDue, getStatus, type Rating, type CardState, type StudyCard, type CardStatus } from '../lib/srs';
 import { loadDeckStates, persistDeckStates, loadSuspended, persistSuspended } from '../lib/storage';
+import { pushCardState, pushUndoCardState, pushSuspendedSet } from '../lib/sync';
+import { useAuth } from '../contexts/AuthContext';
 
 export type DeckStats = Record<CardStatus, number>;
 
@@ -10,6 +12,8 @@ export function useDeck(
   bidirectional: boolean,
   maxNew: number = 10,
 ) {
+  const { user } = useAuth();
+
   const [states, setStates]       = useState<Record<string, CardState>>(() => loadDeckStates(deckId));
   const [suspended, setSuspended] = useState<Set<string>>(() => loadSuspended());
 
@@ -38,10 +42,11 @@ export function useDeck(
     setStates(s => {
       const updated = { ...s, [cardKey]: next };
       persistDeckStates(deckId, updated);
+      if (user) pushCardState(user.id, deckId, next);
       return updated;
     });
     return prev;
-  }, [deckId, states]);
+  }, [deckId, states, user]);
 
   const undoCard = useCallback((cardKey: string, prevState: CardState | null) => {
     setStates(s => {
@@ -49,9 +54,10 @@ export function useDeck(
       if (prevState === null) delete updated[cardKey];
       else updated[cardKey] = prevState;
       persistDeckStates(deckId, updated);
+      if (user) pushUndoCardState(user.id, cardKey, prevState);
       return updated;
     });
-  }, [deckId]);
+  }, [deckId, user]);
 
   const toggleSuspend = useCallback((cardKey: string) => {
     setSuspended(prev => {
@@ -59,9 +65,10 @@ export function useDeck(
       if (next.has(cardKey)) next.delete(cardKey);
       else next.add(cardKey);
       persistSuspended(next);
+      if (user) pushSuspendedSet(user.id, next);
       return next;
     });
-  }, []);
+  }, [user]);
 
   return { states, rate, undoCard, studyQueue, stats, activeCards, suspended, toggleSuspend };
 }

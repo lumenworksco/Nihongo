@@ -2,6 +2,8 @@ import { useState } from 'react';
 import { Settings2, RotateCcw } from 'lucide-react';
 import { motion } from 'framer-motion';
 import { loadSettings, saveSettings, resetDeck } from '../lib/storage';
+import { pushSettings, deleteDeckFromSupabase } from '../lib/sync';
+import { useAuth } from '../contexts/AuthContext';
 
 const DECKS = [
   { id: 'vocabulary', label: 'Vocabulary', jp: '語彙' },
@@ -10,12 +12,14 @@ const DECKS = [
 ];
 
 export default function SettingsPage() {
-  const [settings, setSettings] = useState(loadSettings);
-  const [saved, setSaved]       = useState(false);
+  const { user } = useAuth();
+  const [settings, setSettings]   = useState(loadSettings);
+  const [saved, setSaved]         = useState(false);
   const [resetDone, setResetDone] = useState<string | null>(null);
 
   const handleSave = () => {
     saveSettings(settings);
+    if (user) pushSettings(user.id, settings);
     setSaved(true);
     setTimeout(() => setSaved(false), 2000);
   };
@@ -23,13 +27,17 @@ export default function SettingsPage() {
   const handleReset = (deckId: string) => {
     if (!confirm(`Reset all progress for ${deckId}? This cannot be undone.`)) return;
     resetDeck(deckId);
+    if (user) deleteDeckFromSupabase(user.id, deckId);
     setResetDone(deckId);
     setTimeout(() => setResetDone(null), 2000);
   };
 
   const handleResetAll = () => {
     if (!confirm('Reset ALL progress across every deck? This cannot be undone.')) return;
-    DECKS.forEach(d => resetDeck(d.id));
+    DECKS.forEach(d => {
+      resetDeck(d.id);
+      if (user) deleteDeckFromSupabase(user.id, d.id);
+    });
     setResetDone('all');
     setTimeout(() => setResetDone(null), 2000);
   };

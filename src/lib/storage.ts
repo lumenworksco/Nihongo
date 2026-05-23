@@ -1,10 +1,10 @@
 import type { CardState } from './srs';
 
-const DECK_KEY      = (id: string) => `nihongo_srs_${id}_v2`;
-const STREAK_KEY    = 'nihongo_streak_v1';
-const HISTORY_KEY   = 'nihongo_history_v1';
+const DECK_KEY         = (id: string) => `nihongo_srs_${id}_v2`;
+export const STREAK_KEY    = 'nihongo_streak_v1';
+export const HISTORY_KEY   = 'nihongo_history_v1';
+export const SUSPENDED_KEY = 'nihongo_suspended_v1';
 const SETTINGS_KEY  = 'nihongo_settings_v1';
-const SUSPENDED_KEY = 'nihongo_suspended_v1';
 
 // ── SRS deck state ─────────────────────────────────────────────────────────────
 
