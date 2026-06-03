@@ -230,7 +230,7 @@ export default function Vocabulary() {
             <button
               key={id}
               onClick={() => setMode(id)}
-              className="px-3 py-1.5 text-xs transition-colors flex items-center gap-1.5 relative"
+              className="px-3 py-1.5 text-xs transition-colors flex items-center gap-1.5"
               style={{
                 background: mode === id ? 'var(--accent-dim)' : 'transparent',
                 color: mode === id ? 'var(--accent)' : 'var(--muted)',
@@ -239,7 +239,7 @@ export default function Vocabulary() {
               <Icon size={12} />
               {label}
               {badge != null && badge > 0 && (
-                <span className="absolute -top-1 -right-1 w-4 h-4 rounded-full text-[9px] flex items-center justify-center font-bold" style={{ background: 'var(--accent)', color: '#fff' }}>
+                <span className="min-w-[1rem] h-4 px-1 rounded-full text-[9px] flex items-center justify-center font-bold" style={{ background: 'var(--accent)', color: '#fff' }}>
                   {badge > 99 ? '99+' : badge}
                 </span>
               )}
@@ -349,6 +349,7 @@ export default function Vocabulary() {
             <p className="text-center py-12" style={{ color: 'var(--muted)' }}>No words found.</p>
           ) : mode === 'flashcard' ? (
             <FlashCard
+              key={flashWord.id}
               word={flashWord}
               index={Math.min(flashIndex, filtered.length - 1)}
               total={filtered.length}
