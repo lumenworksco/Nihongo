@@ -1,6 +1,7 @@
 import { vocabulary, type Word } from '../data/vocabulary';
 import { grammarPoints } from '../data/grammar';
 import { particles } from '../data/particles';
+import { cltCards } from '../data/clt';
 import type { StudyCard } from './srs';
 
 const typeLabels: Record<Word['type'], string> = {
@@ -43,6 +44,25 @@ export function buildGrammarCards(): StudyCard[] {
       direction: 'en-jp' as const,
       front: { primary: g.meaning, tag: g.level },
       back: { primary: g.pattern, secondary: g.romaji, detail: g.structure, example: g.examples[0] },
+    },
+  ]);
+}
+
+export function buildCLTCards(): StudyCard[] {
+  return cltCards.flatMap(c => [
+    {
+      cardKey: `clt:${c.id}:j`,
+      deckId:  'clt',
+      direction: 'jp-en' as const,
+      front: { primary: c.jp, secondary: c.romaji, tag: c.note },
+      back:  { primary: c.meaning, secondary: c.note },
+    },
+    {
+      cardKey: `clt:${c.id}:e`,
+      deckId:  'clt',
+      direction: 'en-jp' as const,
+      front: { primary: c.meaning },
+      back:  { primary: c.jp, secondary: c.romaji, detail: c.note },
     },
   ]);
 }

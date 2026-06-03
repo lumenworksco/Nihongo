@@ -8,6 +8,7 @@ import Home from './pages/Home';
 import Vocabulary from './pages/Vocabulary';
 import Grammar from './pages/Grammar';
 import Particles from './pages/Particles';
+import CLT from './pages/CLT';
 import SettingsPage from './pages/Settings';
 import AuthPage from './pages/Auth';
 
@@ -71,6 +72,7 @@ function AppInner() {
             <Route path="/vocabulary" element={<Vocabulary />} />
             <Route path="/grammar"    element={<Grammar />} />
             <Route path="/particles"  element={<Particles />} />
+            <Route path="/clt"        element={<CLT />} />
             <Route path="/settings"   element={<SettingsPage />} />
             <Route path="/auth"       element={<AuthPage />} />
           </Routes>

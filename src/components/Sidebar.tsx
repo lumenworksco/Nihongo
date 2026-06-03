@@ -1,5 +1,5 @@
 import { NavLink, useNavigate } from 'react-router-dom';
-import { BookOpen, Layers, Zap, Home, Settings2, LogIn, LogOut, User } from 'lucide-react';
+import { BookOpen, Layers, Zap, Home, Settings2, LogIn, LogOut, User, School } from 'lucide-react';
 import { useAuth } from '../contexts/AuthContext';
 
 const navLinks = [
@@ -7,6 +7,7 @@ const navLinks = [
   { to: '/vocabulary', label: 'Vocabulary', icon: BookOpen, exact: false },
   { to: '/grammar',    label: 'Grammar',    icon: Layers,   exact: false },
   { to: '/particles',  label: 'Particles',  icon: Zap,      exact: false },
+  { to: '/clt',        label: 'CLT A1.1+',  icon: School,   exact: false },
 ];
 
 const mobileLinks = [
