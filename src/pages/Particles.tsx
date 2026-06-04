@@ -144,7 +144,7 @@ export default function Particles() {
   const dueCount = studyQueue.length;
 
   return (
-    <div className="max-w-2xl mx-auto px-5 py-10 pb-24 md:pb-10">
+    <div className="max-w-2xl mx-auto px-5 py-10 pb-28 md:pb-10">
       <div className="flex items-center justify-between mb-8">
         <div>
           <h1 className="text-xl font-semibold text-white">Particles</h1>

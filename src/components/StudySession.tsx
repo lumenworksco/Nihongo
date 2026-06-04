@@ -195,7 +195,7 @@ export default function StudySession({ queue, onRate, onUndo, onComplete, onBack
           )}
 
           {!revealed && (
-            <p className="text-[10px] mt-5" style={{ color: 'rgba(255,255,255,0.12)' }}>space · enter</p>
+            <p className="hidden sm:block text-[10px] mt-5" style={{ color: 'rgba(255,255,255,0.12)' }}>space · enter</p>
           )}
         </motion.div>
       </AnimatePresence>
@@ -216,7 +216,7 @@ export default function StudySession({ queue, onRate, onUndo, onComplete, onBack
         </div>
       )}
 
-      <p className="text-center text-[10px]" style={{ color: 'rgba(255,255,255,0.12)' }}>
+      <p className="hidden sm:block text-center text-[10px]" style={{ color: 'rgba(255,255,255,0.12)' }}>
         1–4 to rate · U to undo
       </p>
     </div>

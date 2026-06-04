@@ -11,8 +11,12 @@ const navLinks = [
 ];
 
 const mobileLinks = [
-  ...navLinks,
-  { to: '/settings', label: 'Settings', icon: Settings2, exact: false },
+  { to: '/',           label: 'Home',     icon: Home,     exact: true  },
+  { to: '/vocabulary', label: 'Vocab',    icon: BookOpen, exact: false },
+  { to: '/grammar',    label: 'Grammar',  icon: Layers,   exact: false },
+  { to: '/particles',  label: 'Particles',icon: Zap,      exact: false },
+  { to: '/clt',        label: 'CLT',      icon: School,   exact: false },
+  { to: '/settings',   label: 'Settings', icon: Settings2,exact: false },
 ];
 
 function NavItem({ to, label, icon: Icon, exact }: { to: string; label: string; icon: typeof Home; exact: boolean }) {
@@ -107,6 +111,7 @@ export default function Sidebar() {
           background: 'rgba(13,13,18,0.95)',
           backdropFilter: 'blur(12px)',
           borderTop: '1px solid var(--border)',
+          paddingBottom: 'env(safe-area-inset-bottom, 0px)',
         }}
       >
         {mobileLinks.map(({ to, label, icon: Icon, exact }) => (

@@ -56,7 +56,7 @@ export default function AuthPage() {
     setLoading(false);
   };
 
-  const inputClass = 'w-full pl-10 pr-10 py-2.5 rounded-lg text-sm text-white outline-none transition-colors';
+  const inputClass = 'w-full pl-10 pr-10 py-2.5 rounded-lg text-base sm:text-sm text-white outline-none transition-colors';
   const inputStyle = { background: 'var(--faint)', border: '1px solid var(--border)' };
 
   return (

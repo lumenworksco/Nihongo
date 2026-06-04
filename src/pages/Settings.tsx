@@ -43,7 +43,7 @@ export default function SettingsPage() {
   };
 
   return (
-    <div className="max-w-2xl mx-auto px-5 py-10 pb-24 md:pb-10">
+    <div className="max-w-2xl mx-auto px-5 py-10 pb-28 md:pb-10">
       <div className="flex items-center gap-3 mb-8">
         <Settings2 size={20} style={{ color: 'var(--muted)' }} />
         <div>

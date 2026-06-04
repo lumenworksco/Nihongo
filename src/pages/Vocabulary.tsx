@@ -219,8 +219,8 @@ export default function Vocabulary() {
   ];
 
   return (
-    <div className="max-w-2xl mx-auto px-5 py-10 pb-24 md:pb-10">
-      <div className="flex items-center justify-between mb-6">
+    <div className="max-w-2xl mx-auto px-5 py-10 pb-28 md:pb-10">
+      <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-3 mb-6">
         <div>
           <h1 className="text-xl font-semibold text-white">Vocabulary</h1>
           <p className="jp text-sm" style={{ color: 'var(--muted)' }}>語彙 · {vocabulary.length} words</p>
@@ -230,7 +230,7 @@ export default function Vocabulary() {
             <button
               key={id}
               onClick={() => setMode(id)}
-              className="px-3 py-1.5 text-xs transition-colors flex items-center gap-1.5"
+              className="flex-1 sm:flex-none px-3 py-2 sm:py-1.5 text-xs transition-colors flex items-center justify-center gap-1.5"
               style={{
                 background: mode === id ? 'var(--accent-dim)' : 'transparent',
                 color: mode === id ? 'var(--accent)' : 'var(--muted)',
@@ -299,7 +299,7 @@ export default function Vocabulary() {
               placeholder="Search kanji, kana, romaji, meaning…"
               value={search}
               onChange={e => { setSearch(e.target.value); setFlashIndex(0); }}
-              className="w-full pl-9 pr-4 py-2 rounded-lg text-sm text-white outline-none"
+              className="w-full pl-9 pr-4 py-2 rounded-lg text-base sm:text-sm text-white outline-none"
               style={{ background: 'var(--surface)', border: '1px solid var(--border)' }}
             />
           </div>

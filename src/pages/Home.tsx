@@ -68,7 +68,7 @@ function SessionRow({ r }: { r: SessionRecord }) {
       <span className="text-xs font-mono" style={{ color: r.reviewed > 0 && accuracy >= 70 ? '#4ade80' : 'var(--muted)' }}>
         {r.reviewed > 0 ? `${accuracy}%` : '—'}
       </span>
-      <span className="text-xs font-mono shrink-0" style={{ color: 'rgba(255,255,255,0.2)' }}>
+      <span className="hidden sm:inline text-xs font-mono shrink-0" style={{ color: 'rgba(255,255,255,0.2)' }}>
         {formatDuration(r.durationMs)}
       </span>
     </div>
@@ -156,7 +156,7 @@ export default function Home() {
   ];
 
   return (
-    <div className="max-w-2xl mx-auto px-5 py-12">
+    <div className="max-w-2xl mx-auto px-5 pt-12 pb-28 md:py-12">
       <motion.div initial={{ opacity: 0, y: 16 }} animate={{ opacity: 1, y: 0 }} transition={{ duration: 0.5 }}>
         <p className="jp text-5xl font-bold mb-2" style={{ color: 'var(--accent)' }}>日本語</p>
         <h1 className="text-2xl font-semibold text-white mb-2">Learn Japanese</h1>
