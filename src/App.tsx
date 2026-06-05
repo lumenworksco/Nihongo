@@ -66,7 +66,7 @@ function AppInner() {
     <BrowserRouter>
       <div className="flex min-h-screen">
         <Sidebar />
-        <main key={syncEpoch} className="flex-1 min-w-0">
+        <main key={syncEpoch} className="flex-1 min-w-0 pb-[calc(env(safe-area-inset-bottom,0px)+4rem)] md:pb-0">
           <Routes>
             <Route path="/"           element={<Home />} />
             <Route path="/vocabulary" element={<Vocabulary />} />
