@@ -1,5 +1,5 @@
 import { NavLink, useNavigate } from 'react-router-dom';
-import { BookOpen, Layers, Zap, Home, Settings2, LogIn, LogOut, User, School, ALargeSmall, PenLine } from 'lucide-react';
+import { BookOpen, Layers, Zap, Home, Settings2, LogIn, LogOut, User, School, ALargeSmall, PenLine, BookOpenText, ClipboardCheck } from 'lucide-react';
 import { useAuth } from '../contexts/AuthContext';
 
 const navLinks = [
@@ -8,17 +8,19 @@ const navLinks = [
   { to: '/grammar',    label: 'Grammar',    icon: Layers,       exact: false },
   { to: '/particles',  label: 'Particles',  icon: Zap,          exact: false },
   { to: '/kana',       label: 'Kana',       icon: ALargeSmall,  exact: false },
-  { to: '/kanji',      label: 'Kanji',      icon: PenLine,      exact: false },
-  { to: '/clt',        label: 'CLT A1.1+',  icon: School,       exact: false },
+  { to: '/kanji',      label: 'Kanji',      icon: PenLine,         exact: false },
+  { to: '/clt',        label: 'CLT A1.1+',  icon: School,          exact: false },
+  { to: '/reading',    label: 'Reading',    icon: BookOpenText,    exact: false },
+  { to: '/exam',       label: 'Mock Exam',  icon: ClipboardCheck,  exact: false },
 ];
 
 const mobileLinks = [
-  { to: '/',           label: 'Home',     icon: Home,        exact: true  },
-  { to: '/vocabulary', label: 'Vocab',    icon: BookOpen,    exact: false },
-  { to: '/grammar',    label: 'Grammar',  icon: Layers,      exact: false },
-  { to: '/kana',       label: 'Kana',     icon: ALargeSmall, exact: false },
-  { to: '/kanji',      label: 'Kanji',    icon: PenLine,     exact: false },
-  { to: '/settings',   label: 'Settings', icon: Settings2,   exact: false },
+  { to: '/',           label: 'Home',    icon: Home,           exact: true  },
+  { to: '/vocabulary', label: 'Vocab',   icon: BookOpen,       exact: false },
+  { to: '/kana',       label: 'Kana',    icon: ALargeSmall,    exact: false },
+  { to: '/kanji',      label: 'Kanji',   icon: PenLine,        exact: false },
+  { to: '/reading',    label: 'Reading', icon: BookOpenText,   exact: false },
+  { to: '/settings',   label: 'Settings',icon: Settings2,      exact: false },
 ];
 
 function NavItem({ to, label, icon: Icon, exact }: { to: string; label: string; icon: typeof Home; exact: boolean }) {

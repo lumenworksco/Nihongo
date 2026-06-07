@@ -1,5 +1,6 @@
 import { Link } from 'react-router-dom';
-import { BookOpen, Layers, Zap, ArrowRight, GraduationCap, Flame, ALargeSmall, School, PenLine } from 'lucide-react';
+import { BookOpen, Layers, Zap, ArrowRight, GraduationCap, Flame, ALargeSmall, School, PenLine, BookOpenText, ClipboardCheck } from 'lucide-react';
+import { passages } from '../data/reading';
 import { motion } from 'framer-motion';
 import { useMemo } from 'react';
 import { vocabulary } from '../data/vocabulary';
@@ -169,7 +170,9 @@ export default function Home() {
     { to: '/particles',  icon: Zap,         title: 'Particles',  jp: '助詞', desc: `${particles.length} particles`,         color: 'var(--accent)', due: particlesDeck.studyQueue.length },
     { to: '/kana',       icon: ALargeSmall, title: 'Kana',       jp: 'かな', desc: `${kanaEntries.length} characters`,      color: '#a78bfa',       due: kanaDeck.studyQueue.length },
     { to: '/kanji',      icon: PenLine,     title: 'Kanji',      jp: '漢字', desc: `${kanjiEntries.length} N5 kanji`,       color: '#f59e0b',       due: kanjiDeck.studyQueue.length },
-    { to: '/clt',        icon: School,      title: 'CLT A1.1+',  jp: 'CLT', desc: 'Oral exam vocabulary',                  color: '#f472b6',       due: 0 },
+    { to: '/clt',        icon: School,          title: 'CLT A1.1+',  jp: 'CLT',  desc: 'Oral exam vocabulary',                     color: '#f472b6', due: 0 },
+    { to: '/reading',    icon: BookOpenText,    title: 'Reading',    jp: '読解', desc: `${passages.length} N5 reading passages`,   color: '#10b981', due: 0 },
+    { to: '/exam',       icon: ClipboardCheck,  title: 'Mock Exam',  jp: '模試', desc: 'Practice JLPT N5 exam (vocab + grammar + reading)', color: '#f97316', due: 0 },
   ];
 
   return (

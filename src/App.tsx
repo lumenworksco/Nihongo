@@ -11,6 +11,8 @@ import Particles from './pages/Particles';
 import CLT from './pages/CLT';
 import Kana from './pages/Kana';
 import Kanji from './pages/Kanji';
+import Reading from './pages/Reading';
+import Exam from './pages/Exam';
 import SettingsPage from './pages/Settings';
 import AuthPage from './pages/Auth';
 
@@ -77,6 +79,8 @@ function AppInner() {
             <Route path="/clt"        element={<CLT />} />
             <Route path="/kana"       element={<Kana />} />
             <Route path="/kanji"      element={<Kanji />} />
+            <Route path="/reading"    element={<Reading />} />
+            <Route path="/exam"       element={<Exam />} />
             <Route path="/settings"   element={<SettingsPage />} />
             <Route path="/auth"       element={<AuthPage />} />
           </Routes>
