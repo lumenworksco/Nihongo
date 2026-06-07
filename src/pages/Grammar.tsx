@@ -1,11 +1,11 @@
 import { useState, useMemo } from 'react';
 import { motion, AnimatePresence } from 'framer-motion';
-import { ChevronDown, GraduationCap, ArrowLeftRight, EyeOff, Eye } from 'lucide-react';
+import { Search, ChevronDown, GraduationCap, ArrowLeftRight, EyeOff, Eye } from 'lucide-react';
 import { grammarPoints, type GrammarPoint } from '../data/grammar';
 import { useDeck } from '../hooks/useDeck';
 import { useProgress } from '../hooks/useProgress';
 import { buildGrammarCards } from '../lib/studyCards';
-import { getStatus, statusMeta, formatDue, formatInterval, type CardState } from '../lib/srs';
+import { getStatus, statusMeta, formatDue, formatInterval, type CardStatus, type CardState, type StudyCard } from '../lib/srs';
 import { loadSettings } from '../lib/storage';
 import StudySession from '../components/StudySession';
 
@@ -42,7 +42,6 @@ function GrammarCard({ point, state, isSuspended, onToggleSuspend }: {
             <span className="text-[10px] px-2 py-0.5 rounded-full" style={{ background: 'rgba(96,165,250,0.12)', color: '#60a5fa', border: '1px solid rgba(96,165,250,0.2)' }}>
               {point.level}
             </span>
-            {/* Status pill */}
             <span className="text-[10px] px-1.5 py-0.5 rounded-full ml-auto" style={{ background: `${color}15`, color }}>
               {statusMeta[status].label}
             </span>
@@ -95,7 +94,6 @@ function GrammarCard({ point, state, isSuspended, onToggleSuspend }: {
                 </div>
               )}
 
-              {/* Card details */}
               <div className="pt-1" style={{ borderTop: '1px solid var(--border)' }}>
                 <p className="text-xs font-mono uppercase tracking-widest mb-2" style={{ color: 'var(--muted)' }}>Card info</p>
                 <div className="flex flex-wrap gap-x-4 gap-y-1 mb-3">
@@ -130,11 +128,33 @@ export default function Grammar() {
   const maxNew = useMemo(() => loadSettings().maxNewCards, []);
   const [mode, setMode]                   = useState<Mode>('browse');
   const [bidirectional, setBidirectional] = useState(false);
-  const { states, rate, undoCard, studyQueue, suspended, toggleSuspend } =
+  const [search, setSearch]               = useState('');
+  const [statusFilter, setStatusFilter]   = useState<CardStatus | 'all'>('all');
+  const [frozenQueue, setFrozenQueue]     = useState<StudyCard[]>([]);
+  const { states, rate, undoCard, studyQueue, stats, suspended, toggleSuspend } =
     useDeck('grammar', grammarCards, bidirectional, maxNew);
   const { recordSession } = useProgress();
 
   const dueCount = studyQueue.length;
+
+  const handleStudyToggle = () => {
+    if (mode === 'study') {
+      setFrozenQueue([]);
+      setMode('browse');
+    } else {
+      setFrozenQueue([...studyQueue]);
+      setMode('study');
+    }
+  };
+
+  const filteredPoints = useMemo(() => {
+    const q = search.toLowerCase();
+    return grammarPoints.filter(p => {
+      const matchStatus = statusFilter === 'all' || getStatus(states[`g:${p.id}:j`]) === statusFilter;
+      const matchSearch = !q || p.pattern.includes(q) || p.romaji.toLowerCase().includes(q) || p.meaning.toLowerCase().includes(q);
+      return matchStatus && matchSearch;
+    });
+  }, [search, statusFilter, states]);
 
   return (
     <div className="max-w-2xl mx-auto px-5 py-10 pb-28 md:pb-10">
@@ -159,7 +179,7 @@ export default function Grammar() {
             </button>
           )}
           <button
-            onClick={() => setMode(m => m === 'study' ? 'browse' : 'study')}
+            onClick={handleStudyToggle}
             className="relative flex items-center gap-1.5 px-3 py-1.5 rounded-lg text-xs transition-colors"
             style={{
               background: mode === 'study' ? 'var(--accent-dim)' : 'var(--faint)',
@@ -179,39 +199,83 @@ export default function Grammar() {
       </div>
 
       {mode === 'study' ? (
-        dueCount === 0 ? (
+        frozenQueue.length === 0 ? (
           <div className="flex flex-col items-center gap-4 py-16 text-center">
             <p className="text-4xl">🎉</p>
             <p className="text-lg font-semibold text-white">Nothing due right now</p>
             <p className="text-sm" style={{ color: 'var(--muted)' }}>Come back later or review the patterns below.</p>
-            <button onClick={() => setMode('browse')} className="mt-2 text-sm underline" style={{ color: 'var(--muted)' }}>Browse grammar</button>
+            <button onClick={() => { setFrozenQueue([]); setMode('browse'); }} className="mt-2 text-sm underline" style={{ color: 'var(--muted)' }}>Browse grammar</button>
           </div>
         ) : (
           <StudySession
-            queue={studyQueue}
+            queue={frozenQueue}
             onRate={rate}
             onUndo={undoCard}
             onComplete={(reviewed, ratings, durationMs) =>
               recordSession('grammar', reviewed, ratings, durationMs)
             }
-            onBack={() => setMode('browse')}
+            onBack={() => { setFrozenQueue([]); setMode('browse'); }}
           />
         )
       ) : (
-        <div className="flex flex-col gap-3">
-          {grammarPoints.map(point => (
-            <GrammarCard
-              key={point.id}
-              point={point}
-              state={states[`g:${point.id}:j`]}
-              isSuspended={suspended.has(`g:${point.id}:j`)}
-              onToggleSuspend={() => {
-                toggleSuspend(`g:${point.id}:j`);
-                toggleSuspend(`g:${point.id}:e`);
-              }}
+        <>
+          {/* Search */}
+          <div className="relative mb-4">
+            <Search size={14} className="absolute left-3 top-1/2 -translate-y-1/2" style={{ color: 'var(--muted)' }} />
+            <input
+              type="text"
+              placeholder="Search pattern, romaji, meaning…"
+              value={search}
+              onChange={e => setSearch(e.target.value)}
+              className="w-full pl-9 pr-4 py-2 rounded-lg text-base sm:text-sm text-white outline-none"
+              style={{ background: 'var(--surface)', border: '1px solid var(--border)' }}
             />
-          ))}
-        </div>
+          </div>
+
+          {/* Status filter pills */}
+          <div className="flex flex-wrap gap-2 mb-6">
+            {(['all', 'new', 'learning', 'review', 'scheduled', 'known'] as const).map(s => {
+              const meta = s === 'all' ? null : statusMeta[s];
+              return (
+                <button
+                  key={s}
+                  onClick={() => setStatusFilter(s)}
+                  className="px-3 py-1 rounded-full text-xs flex items-center gap-1.5 transition-colors"
+                  style={{
+                    background: statusFilter === s ? (meta ? `${meta.color}18` : 'rgba(255,255,255,0.08)') : 'var(--faint)',
+                    color: statusFilter === s ? (meta?.color ?? 'white') : 'var(--muted)',
+                    border: `1px solid ${statusFilter === s ? (meta ? `${meta.color}35` : 'rgba(255,255,255,0.15)') : 'var(--border)'}`,
+                  }}
+                >
+                  {meta && <span className="w-1.5 h-1.5 rounded-full" style={{ background: meta.color }} />}
+                  {s === 'all' ? 'All' : meta!.label}
+                  {s !== 'all' && (
+                    <span className="font-mono" style={{ color: 'var(--muted)' }}>{stats[s]}</span>
+                  )}
+                </button>
+              );
+            })}
+          </div>
+
+          {filteredPoints.length === 0 ? (
+            <p className="text-center py-12" style={{ color: 'var(--muted)' }}>No patterns found.</p>
+          ) : (
+            <div className="flex flex-col gap-3">
+              {filteredPoints.map(point => (
+                <GrammarCard
+                  key={point.id}
+                  point={point}
+                  state={states[`g:${point.id}:j`]}
+                  isSuspended={suspended.has(`g:${point.id}:j`)}
+                  onToggleSuspend={() => {
+                    toggleSuspend(`g:${point.id}:j`);
+                    toggleSuspend(`g:${point.id}:e`);
+                  }}
+                />
+              ))}
+            </div>
+          )}
+        </>
       )}
     </div>
   );

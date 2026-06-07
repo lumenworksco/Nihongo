@@ -3,7 +3,7 @@ import { motion, AnimatePresence } from 'framer-motion';
 import { CheckCircle, Undo2, ArrowLeftRight } from 'lucide-react';
 import type { StudyCard, CardState, Rating } from '../lib/srs';
 
-interface UndoEntry { card: StudyCard; prevState: CardState | null }
+interface UndoEntry { card: StudyCard; prevState: CardState | null; rating: Rating }
 
 interface Props {
   queue: StudyCard[];
@@ -21,46 +21,62 @@ const ratingButtons: { value: Rating; label: string; color: string; key: string 
 ];
 
 export default function StudySession({ queue, onRate, onUndo, onComplete, onBack }: Props) {
-  const [index, setIndex]         = useState(0);
-  const [revealed, setRevealed]   = useState(false);
-  const [undoStack, setUndoStack] = useState<UndoEntry[]>([]);
-  const [ratings, setRatings]     = useState<Record<Rating, number>>({ again: 0, hard: 0, good: 0, easy: 0 });
-  const [done, setDone]           = useState(false);
-  const startTime                 = useRef(Date.now());
+  const [localQueue, setLocalQueue] = useState<StudyCard[]>(() => [...queue]);
+  const [index, setIndex]           = useState(0);
+  const [revealed, setRevealed]     = useState(false);
+  const [undoStack, setUndoStack]   = useState<UndoEntry[]>([]);
+  const [ratings, setRatings]       = useState<Record<Rating, number>>({ again: 0, hard: 0, good: 0, easy: 0 });
+  const [done, setDone]             = useState(false);
+  const startTime                   = useRef(Date.now());
+  const localQueueRef               = useRef(localQueue);
+  localQueueRef.current = localQueue;
 
-  const card     = done ? queue[queue.length - 1] : queue[index];
-  const canUndo  = undoStack.length > 0;
-  const isJpFront = card?.direction === 'jp-en';
+  const card       = localQueue[index];
+  const canUndo    = undoStack.length > 0;
+  const isJpFront  = card?.jpFront ?? card?.direction === 'jp-en';
 
   const handleRate = useCallback((rating: Rating) => {
     if (done) return;
     const prev = onRate(card.cardKey, rating);
     const newRatings = { ...ratings, [rating]: ratings[rating] + 1 };
-    setUndoStack(s => [...s, { card, prevState: prev }]);
+    setUndoStack(s => [...s, { card, prevState: prev, rating }]);
     setRatings(newRatings);
-    const next = index + 1;
-    if (next >= queue.length) {
-      setDone(true);
-      onComplete(queue.length, newRatings, Date.now() - startTime.current);
-    } else {
+
+    if (rating === 'again') {
+      setLocalQueue(q => [...q, card]);
       setRevealed(false);
-      setIndex(next);
+      setIndex(i => i + 1);
+    } else {
+      const next = index + 1;
+      if (next >= localQueueRef.current.length) {
+        setDone(true);
+        const totalRatings = Object.values(newRatings).reduce((a, b) => a + b, 0);
+        onComplete(totalRatings, newRatings, Date.now() - startTime.current);
+      } else {
+        setRevealed(false);
+        setIndex(next);
+      }
     }
-  }, [done, card, index, queue.length, onRate, onComplete, ratings]);
+  }, [done, card, index, onRate, onComplete, ratings]);
 
   const handleUndo = useCallback(() => {
     if (!canUndo) return;
     const last = undoStack[undoStack.length - 1];
     onUndo(last.card.cardKey, last.prevState);
     setUndoStack(s => s.slice(0, -1));
+    setRatings(r => ({ ...r, [last.rating]: Math.max(0, r[last.rating] - 1) }));
+
+    if (last.rating === 'again') {
+      setLocalQueue(q => q.slice(0, -1));
+    }
+
     if (done) {
       setDone(false);
-      setIndex(queue.length - 1);
     } else {
       setIndex(i => Math.max(0, i - 1));
     }
     setRevealed(false);
-  }, [canUndo, undoStack, onUndo, done, queue.length]);
+  }, [canUndo, undoStack, onUndo, done]);
 
   // Keyboard shortcuts
   useEffect(() => {
@@ -86,15 +102,17 @@ export default function StudySession({ queue, onRate, onUndo, onComplete, onBack
 
   // Done screen
   if (done) {
-    const total = queue.length;
-    const correct = ratings.good + ratings.easy;
+    const uniqueCards  = queue.length;
+    const totalRatings = Object.values(ratings).reduce((a, b) => a + b, 0);
+    const correct      = ratings.good + ratings.easy;
+    const accuracy     = totalRatings > 0 ? Math.round((correct / totalRatings) * 100) : 0;
     return (
       <motion.div initial={{ opacity: 0, y: 16 }} animate={{ opacity: 1, y: 0 }} className="flex flex-col items-center gap-6 py-10 text-center">
         <CheckCircle size={44} style={{ color: '#4ade80' }} />
         <div>
           <p className="text-xl font-semibold text-white mb-1">Session complete</p>
           <p className="text-sm" style={{ color: 'var(--muted)' }}>
-            {total} card{total !== 1 ? 's' : ''} · {Math.round((correct / total) * 100)}% correct
+            {uniqueCards} card{uniqueCards !== 1 ? 's' : ''} · {accuracy}% correct
           </p>
         </div>
         <div className="grid grid-cols-4 gap-3 w-full max-w-xs">
@@ -124,9 +142,9 @@ export default function StudySession({ queue, onRate, onUndo, onComplete, onBack
       {/* Progress bar + undo */}
       <div className="flex items-center gap-3">
         <div className="flex-1 h-1.5 rounded-full" style={{ background: 'var(--faint)' }}>
-          <motion.div className="h-full rounded-full" style={{ background: 'var(--accent)' }} animate={{ width: `${(index / queue.length) * 100}%` }} transition={{ duration: 0.3 }} />
+          <motion.div className="h-full rounded-full" style={{ background: 'var(--accent)' }} animate={{ width: `${(index / localQueue.length) * 100}%` }} transition={{ duration: 0.3 }} />
         </div>
-        <span className="text-xs font-mono shrink-0" style={{ color: 'var(--muted)' }}>{index + 1}/{queue.length}</span>
+        <span className="text-xs font-mono shrink-0" style={{ color: 'var(--muted)' }}>{index + 1}/{localQueue.length}</span>
         <button
           onClick={handleUndo}
           disabled={!canUndo}
@@ -149,7 +167,7 @@ export default function StudySession({ queue, onRate, onUndo, onComplete, onBack
       {/* Card */}
       <AnimatePresence mode="wait">
         <motion.div
-          key={card.cardKey + String(revealed)}
+          key={card.cardKey + String(index) + String(revealed)}
           initial={{ opacity: 0, x: 16 }}
           animate={{ opacity: 1, x: 0 }}
           exit={{ opacity: 0, x: -16 }}

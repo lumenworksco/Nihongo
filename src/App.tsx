@@ -9,6 +9,8 @@ import Vocabulary from './pages/Vocabulary';
 import Grammar from './pages/Grammar';
 import Particles from './pages/Particles';
 import CLT from './pages/CLT';
+import Kana from './pages/Kana';
+import Kanji from './pages/Kanji';
 import SettingsPage from './pages/Settings';
 import AuthPage from './pages/Auth';
 
@@ -73,6 +75,8 @@ function AppInner() {
             <Route path="/grammar"    element={<Grammar />} />
             <Route path="/particles"  element={<Particles />} />
             <Route path="/clt"        element={<CLT />} />
+            <Route path="/kana"       element={<Kana />} />
+            <Route path="/kanji"      element={<Kanji />} />
             <Route path="/settings"   element={<SettingsPage />} />
             <Route path="/auth"       element={<AuthPage />} />
           </Routes>

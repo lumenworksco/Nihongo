@@ -17,7 +17,7 @@ export function useProgress() {
     const date      = new Date().toISOString().slice(0, 10);
     const timestamp = Date.now();
     saveSession({ deck, reviewed, ratings, durationMs });
-    const newStreak  = touchStreak();
+    const newStreak  = touchStreak(reviewed);
     const newHistory = loadHistory();
     setStreak(newStreak);
     setHistory(newHistory);

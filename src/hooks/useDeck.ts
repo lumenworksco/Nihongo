@@ -31,7 +31,7 @@ export function useDeck(
   }, [activeCards, states, maxNew]);
 
   const stats = useMemo<DeckStats>(() => {
-    const counts: DeckStats = { new: 0, learning: 0, review: 0, known: 0 };
+    const counts: DeckStats = { new: 0, learning: 0, review: 0, scheduled: 0, known: 0 };
     activeCards.forEach(c => counts[getStatus(states[c.cardKey])]++);
     return counts;
   }, [activeCards, states]);

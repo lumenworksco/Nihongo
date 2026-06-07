@@ -13,11 +13,12 @@ export interface StudyCard {
   cardKey: string;
   deckId: string;
   direction: 'jp-en' | 'en-jp';
+  jpFront?: boolean;
   front: { primary: string; secondary?: string; tag?: string };
   back: { primary: string; secondary?: string; detail?: string; example?: { jp: string; en: string } };
 }
 
-export type CardStatus = 'new' | 'learning' | 'review' | 'known';
+export type CardStatus = 'new' | 'learning' | 'review' | 'scheduled' | 'known';
 
 const MIN_EASE = 1.3;
 const DAY = 86_400_000;
@@ -56,14 +57,15 @@ export function getStatus(state: CardState | undefined): CardStatus {
   if (state.repetitions === 0) return 'learning';
   if (state.interval >= 21) return 'known';
   if (isDue(state)) return 'review';
-  return 'known';
+  return 'scheduled';
 }
 
 export const statusMeta: Record<CardStatus, { label: string; color: string }> = {
-  new:      { label: 'New',      color: '#60a5fa' },
-  learning: { label: 'Learning', color: '#f59e0b' },
-  review:   { label: 'Review',   color: 'var(--accent)' },
-  known:    { label: 'Known',    color: '#4ade80' },
+  new:       { label: 'New',       color: '#60a5fa' },
+  learning:  { label: 'Learning',  color: '#f59e0b' },
+  review:    { label: 'Review',    color: 'var(--accent)' },
+  scheduled: { label: 'Scheduled', color: '#a78bfa' },
+  known:     { label: 'Known',     color: '#4ade80' },
 };
 
 export function formatDue(state: CardState | undefined): string {

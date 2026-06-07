@@ -6,9 +6,12 @@ import { pushSettings, deleteDeckFromSupabase } from '../lib/sync';
 import { useAuth } from '../contexts/AuthContext';
 
 const DECKS = [
-  { id: 'vocabulary', label: 'Vocabulary', jp: '語彙' },
-  { id: 'grammar',    label: 'Grammar',    jp: '文法' },
-  { id: 'particles',  label: 'Particles',  jp: '助詞' },
+  { id: 'vocabulary', label: 'Vocabulary',   jp: '語彙' },
+  { id: 'grammar',    label: 'Grammar',      jp: '文法' },
+  { id: 'particles',  label: 'Particles',    jp: '助詞' },
+  { id: 'kana',       label: 'Kana',         jp: 'かな' },
+  { id: 'kanji',      label: 'Kanji',        jp: '漢字' },
+  { id: 'clt',        label: 'CLT Japanese', jp: 'CLT' },
 ];
 
 export default function SettingsPage() {

@@ -2,6 +2,8 @@ import { vocabulary, type Word } from '../data/vocabulary';
 import { grammarPoints } from '../data/grammar';
 import { particles } from '../data/particles';
 import { cltCards } from '../data/clt';
+import { kanaEntries } from '../data/kana';
+import { kanjiEntries } from '../data/kanji';
 import type { StudyCard } from './srs';
 
 const typeLabels: Record<Word['type'], string> = {
@@ -63,6 +65,51 @@ export function buildCLTCards(): StudyCard[] {
       direction: 'en-jp' as const,
       front: { primary: c.meaning },
       back:  { primary: c.jp, secondary: c.romaji, detail: c.note },
+    },
+  ]);
+}
+
+export function buildKanaCards(): StudyCard[] {
+  return kanaEntries.flatMap(k => [
+    {
+      cardKey: `kana:h:${k.id}`,
+      deckId: 'kana',
+      direction: 'jp-en' as const,
+      front: { primary: k.hiragana },
+      back: { primary: k.romaji, secondary: k.katakana },
+    },
+    {
+      cardKey: `kana:k:${k.id}`,
+      deckId: 'kana',
+      direction: 'en-jp' as const,
+      jpFront: true,
+      front: { primary: k.katakana },
+      back: { primary: k.romaji, secondary: k.hiragana },
+    },
+  ]);
+}
+
+export function buildKanjiCards(): StudyCard[] {
+  return kanjiEntries.flatMap(k => [
+    {
+      cardKey: `kanji:${k.id}:j`,
+      deckId: 'kanji',
+      direction: 'jp-en' as const,
+      front: { primary: k.kanji },
+      back: {
+        primary: k.meanings.join(', '),
+        secondary: [k.onyomi.join('・'), k.kunyomi.join('・')].filter(Boolean).join('  ·  '),
+      },
+    },
+    {
+      cardKey: `kanji:${k.id}:e`,
+      deckId: 'kanji',
+      direction: 'en-jp' as const,
+      front: { primary: k.meanings.join(', ') },
+      back: {
+        primary: k.kanji,
+        secondary: [k.onyomi.join('・'), k.kunyomi.join('・')].filter(Boolean).join('  ·  '),
+      },
     },
   ]);
 }

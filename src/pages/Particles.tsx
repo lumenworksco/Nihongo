@@ -5,7 +5,7 @@ import { particles, type Particle } from '../data/particles';
 import { useDeck } from '../hooks/useDeck';
 import { useProgress } from '../hooks/useProgress';
 import { buildParticleCards } from '../lib/studyCards';
-import { getStatus, statusMeta, formatDue, formatInterval, type CardState } from '../lib/srs';
+import { getStatus, statusMeta, formatDue, formatInterval, type CardState, type StudyCard } from '../lib/srs';
 import { loadSettings } from '../lib/storage';
 import StudySession from '../components/StudySession';
 
@@ -137,11 +137,22 @@ export default function Particles() {
   const maxNew = useMemo(() => loadSettings().maxNewCards, []);
   const [mode, setMode]                   = useState<Mode>('browse');
   const [bidirectional, setBidirectional] = useState(false);
+  const [frozenQueue, setFrozenQueue]     = useState<StudyCard[]>([]);
   const { states, rate, undoCard, studyQueue, suspended, toggleSuspend } =
     useDeck('particles', particleCards, bidirectional, maxNew);
   const { recordSession } = useProgress();
 
   const dueCount = studyQueue.length;
+
+  const handleStudyToggle = () => {
+    if (mode === 'study') {
+      setFrozenQueue([]);
+      setMode('browse');
+    } else {
+      setFrozenQueue([...studyQueue]);
+      setMode('study');
+    }
+  };
 
   return (
     <div className="max-w-2xl mx-auto px-5 py-10 pb-28 md:pb-10">
@@ -166,7 +177,7 @@ export default function Particles() {
             </button>
           )}
           <button
-            onClick={() => setMode(m => m === 'study' ? 'browse' : 'study')}
+            onClick={handleStudyToggle}
             className="relative flex items-center gap-1.5 px-3 py-1.5 rounded-lg text-xs transition-colors"
             style={{
               background: mode === 'study' ? 'var(--accent-dim)' : 'var(--faint)',
@@ -186,22 +197,22 @@ export default function Particles() {
       </div>
 
       {mode === 'study' ? (
-        dueCount === 0 ? (
+        frozenQueue.length === 0 ? (
           <div className="flex flex-col items-center gap-4 py-16 text-center">
             <p className="text-4xl">🎉</p>
             <p className="text-lg font-semibold text-white">Nothing due right now</p>
             <p className="text-sm" style={{ color: 'var(--muted)' }}>Come back later or review the particles below.</p>
-            <button onClick={() => setMode('browse')} className="mt-2 text-sm underline" style={{ color: 'var(--muted)' }}>Browse particles</button>
+            <button onClick={() => { setFrozenQueue([]); setMode('browse'); }} className="mt-2 text-sm underline" style={{ color: 'var(--muted)' }}>Browse particles</button>
           </div>
         ) : (
           <StudySession
-            queue={studyQueue}
+            queue={frozenQueue}
             onRate={rate}
             onUndo={undoCard}
             onComplete={(reviewed, ratings, durationMs) =>
               recordSession('particles', reviewed, ratings, durationMs)
             }
-            onBack={() => setMode('browse')}
+            onBack={() => { setFrozenQueue([]); setMode('browse'); }}
           />
         )
       ) : (

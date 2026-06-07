@@ -39,7 +39,8 @@ export function loadStreak(): StreakData {
   catch { return defaultStreak; }
 }
 
-export function touchStreak(): StreakData {
+export function touchStreak(reviewed: number): StreakData {
+  if (reviewed < 3) return loadStreak();
   const s = loadStreak();
   const t = todayStr();
   if (s.lastStudyDate === t) return s;

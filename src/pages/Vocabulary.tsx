@@ -198,6 +198,13 @@ export default function Vocabulary() {
   const [mode, setMode]                 = useState<Mode>('browse');
   const [flashIndex, setFlashIndex]     = useState(0);
   const [statusFilter, setStatusFilter] = useState<CardStatus | 'all'>('all');
+  const [frozenQueue, setFrozenQueue]   = useState<typeof studyQueue>([]);
+
+  const handleModeChange = (newMode: Mode) => {
+    if (newMode === 'study' && mode !== 'study') setFrozenQueue([...studyQueue]);
+    if (newMode !== 'study') setFrozenQueue([]);
+    setMode(newMode);
+  };
 
   const filtered = useMemo(() => {
     const q = search.toLowerCase();
@@ -229,7 +236,7 @@ export default function Vocabulary() {
           {modeButtons.map(({ id, icon: Icon, label, badge }) => (
             <button
               key={id}
-              onClick={() => setMode(id)}
+              onClick={() => handleModeChange(id)}
               className="flex-1 sm:flex-none px-3 py-2 sm:py-1.5 text-xs transition-colors flex items-center justify-center gap-1.5"
               style={{
                 background: mode === id ? 'var(--accent-dim)' : 'transparent',
@@ -266,24 +273,24 @@ export default function Vocabulary() {
             </button>
           </div>
 
-          {dueCount === 0 ? (
+          {frozenQueue.length === 0 ? (
             <div className="flex flex-col items-center gap-4 py-16 text-center">
               <p className="text-4xl">🎉</p>
               <p className="text-lg font-semibold text-white">Nothing due right now</p>
               <p className="text-sm" style={{ color: 'var(--muted)' }}>Come back later or browse new words.</p>
-              <button onClick={() => setMode('browse')} className="mt-2 text-sm underline" style={{ color: 'var(--muted)' }}>
+              <button onClick={() => handleModeChange('browse')} className="mt-2 text-sm underline" style={{ color: 'var(--muted)' }}>
                 Browse vocabulary
               </button>
             </div>
           ) : (
             <StudySession
-              queue={studyQueue}
+              queue={frozenQueue}
               onRate={rate}
               onUndo={undoCard}
               onComplete={(reviewed, ratings, durationMs) =>
                 recordSession('vocabulary', reviewed, ratings, durationMs)
               }
-              onBack={() => setMode('browse')}
+              onBack={() => handleModeChange('browse')}
             />
           )}
         </>
@@ -322,7 +329,7 @@ export default function Vocabulary() {
           </div>
 
           <div className="flex flex-wrap gap-2 mb-6">
-            {(['all', 'new', 'learning', 'review', 'known'] as const).map(s => {
+            {(['all', 'new', 'learning', 'review', 'scheduled', 'known'] as const).map(s => {
               const meta = s === 'all' ? null : statusMeta[s];
               return (
                 <button
@@ -348,14 +355,19 @@ export default function Vocabulary() {
           {filtered.length === 0 ? (
             <p className="text-center py-12" style={{ color: 'var(--muted)' }}>No words found.</p>
           ) : mode === 'flashcard' ? (
-            <FlashCard
-              key={flashWord.id}
-              word={flashWord}
-              index={Math.min(flashIndex, filtered.length - 1)}
-              total={filtered.length}
-              onNext={() => setFlashIndex(i => (i + 1) % filtered.length)}
-              onPrev={() => setFlashIndex(i => (i - 1 + filtered.length) % filtered.length)}
-            />
+            <>
+              <div className="mb-4 px-4 py-2.5 rounded-xl text-xs flex items-center gap-2" style={{ background: 'rgba(96,165,250,0.08)', border: '1px solid rgba(96,165,250,0.2)', color: '#60a5fa' }}>
+                Flashcard mode is for casual browsing — ratings here do not update your SRS progress.
+              </div>
+              <FlashCard
+                key={flashWord.id}
+                word={flashWord}
+                index={Math.min(flashIndex, filtered.length - 1)}
+                total={filtered.length}
+                onNext={() => setFlashIndex(i => (i + 1) % filtered.length)}
+                onPrev={() => setFlashIndex(i => (i - 1 + filtered.length) % filtered.length)}
+              />
+            </>
           ) : (
             <motion.div layout className="grid grid-cols-1 sm:grid-cols-2 gap-3">
               <AnimatePresence mode="popLayout">

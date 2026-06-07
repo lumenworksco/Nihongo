@@ -1,19 +1,23 @@
 import { Link } from 'react-router-dom';
-import { BookOpen, Layers, Zap, ArrowRight, GraduationCap, Flame } from 'lucide-react';
+import { BookOpen, Layers, Zap, ArrowRight, GraduationCap, Flame, ALargeSmall, School, PenLine } from 'lucide-react';
 import { motion } from 'framer-motion';
 import { useMemo } from 'react';
 import { vocabulary } from '../data/vocabulary';
 import { grammarPoints } from '../data/grammar';
 import { particles } from '../data/particles';
+import { kanaEntries } from '../data/kana';
+import { kanjiEntries } from '../data/kanji';
 import { useDeck } from '../hooks/useDeck';
 import { useProgress } from '../hooks/useProgress';
-import { buildVocabCards, buildGrammarCards, buildParticleCards } from '../lib/studyCards';
+import { buildVocabCards, buildGrammarCards, buildParticleCards, buildKanaCards, buildKanjiCards } from '../lib/studyCards';
 import { statusMeta } from '../lib/srs';
 import { loadSettings, type SessionRecord } from '../lib/storage';
 
 const vocabCards    = buildVocabCards();
 const grammarCards  = buildGrammarCards();
 const particleCards = buildParticleCards();
+const kanaCards     = buildKanaCards();
+const kanjiCards    = buildKanjiCards();
 
 const DAY_LABELS = ['Su', 'Mo', 'Tu', 'We', 'Th', 'Fr', 'Sa'];
 
@@ -27,6 +31,9 @@ const DECK_COLORS: Record<string, string> = {
   vocabulary: '#4ade80',
   grammar:    '#60a5fa',
   particles:  'var(--accent)',
+  kana:       '#a78bfa',
+  kanji:      '#f59e0b',
+  clt:        '#f472b6',
 };
 
 function formatHistoryDate(dateStr: string): string {
@@ -48,7 +55,10 @@ function formatDuration(ms: number): string {
 }
 
 function SessionRow({ r }: { r: SessionRecord }) {
-  const accuracy = Math.round(((r.ratings.good + r.ratings.easy) / r.reviewed) * 100);
+  const totalRatings = r.ratings.again + r.ratings.hard + r.ratings.good + r.ratings.easy;
+  const accuracy = totalRatings > 0
+    ? Math.round(((r.ratings.good + r.ratings.easy) / totalRatings) * 100)
+    : 0;
   const color = DECK_COLORS[r.deck] ?? 'var(--muted)';
   return (
     <div className="flex items-center gap-3 py-2.5 px-1">
@@ -65,8 +75,8 @@ function SessionRow({ r }: { r: SessionRecord }) {
       <span className="text-xs font-mono" style={{ color: 'var(--muted)' }}>
         {r.reviewed} cards
       </span>
-      <span className="text-xs font-mono" style={{ color: r.reviewed > 0 && accuracy >= 70 ? '#4ade80' : 'var(--muted)' }}>
-        {r.reviewed > 0 ? `${accuracy}%` : '—'}
+      <span className="text-xs font-mono" style={{ color: totalRatings > 0 && accuracy >= 70 ? '#4ade80' : 'var(--muted)' }}>
+        {totalRatings > 0 ? `${accuracy}%` : '—'}
       </span>
       <span className="hidden sm:inline text-xs font-mono shrink-0" style={{ color: 'rgba(255,255,255,0.2)' }}>
         {formatDuration(r.durationMs)}
@@ -100,11 +110,11 @@ function DeckProgress({ label, jp, studied, total, stats, color }: {
           transition={{ duration: 0.7, delay: 0.2 }}
         />
       </div>
-      <div className="flex gap-2">
-        {(['new', 'learning', 'review', 'known'] as const).map(s => (
+      <div className="flex gap-1.5">
+        {(['new', 'learning', 'review', 'scheduled', 'known'] as const).map(s => (
           <div key={s} className="flex-1 flex flex-col items-center gap-0.5 py-1.5 rounded-lg" style={{ background: 'var(--faint)' }}>
-            <span className="text-sm font-bold" style={{ color: statusMeta[s].color }}>{stats[s]}</span>
-            <span className="text-[9px]" style={{ color: 'var(--muted)' }}>{statusMeta[s].label}</span>
+            <span className="text-xs font-bold" style={{ color: statusMeta[s].color }}>{stats[s]}</span>
+            <span className="text-[8px] leading-none text-center" style={{ color: 'var(--muted)' }}>{statusMeta[s].label}</span>
           </div>
         ))}
       </div>
@@ -118,17 +128,21 @@ export default function Home() {
   const vocab         = useDeck('vocabulary', vocabCards,    false, maxNew);
   const grammar       = useDeck('grammar',    grammarCards,  false, maxNew);
   const particlesDeck = useDeck('particles',  particleCards, false, maxNew);
+  const kanaDeck      = useDeck('kana',       kanaCards,     false, maxNew);
+  const kanjiDeck     = useDeck('kanji',      kanjiCards,    false, maxNew);
   const { streak, history } = useProgress();
 
-  const totalDue = vocab.studyQueue.length + grammar.studyQueue.length + particlesDeck.studyQueue.length;
+  const totalDue = vocab.studyQueue.length + grammar.studyQueue.length + particlesDeck.studyQueue.length + kanaDeck.studyQueue.length + kanjiDeck.studyQueue.length;
 
   const bestStudyLink = useMemo(() => {
     return [
       { to: '/vocabulary', count: vocab.studyQueue.length },
       { to: '/grammar',    count: grammar.studyQueue.length },
       { to: '/particles',  count: particlesDeck.studyQueue.length },
+      { to: '/kana',       count: kanaDeck.studyQueue.length },
+      { to: '/kanji',      count: kanjiDeck.studyQueue.length },
     ].sort((a, b) => b.count - a.count)[0].to;
-  }, [vocab.studyQueue.length, grammar.studyQueue.length, particlesDeck.studyQueue.length]);
+  }, [vocab.studyQueue.length, grammar.studyQueue.length, particlesDeck.studyQueue.length, kanaDeck.studyQueue.length, kanjiDeck.studyQueue.length]);
 
   const last7 = useMemo(() => {
     const days: { label: string; reviewed: number }[] = [];
@@ -150,9 +164,12 @@ export default function Home() {
   );
 
   const sections = [
-    { to: '/vocabulary', icon: BookOpen, title: 'Vocabulary', jp: '語彙', desc: `${vocabulary.length} N5 words`, color: '#4ade80', due: vocab.studyQueue.length },
-    { to: '/grammar',    icon: Layers,   title: 'Grammar',    jp: '文法', desc: `${grammarPoints.length} patterns`,  color: '#60a5fa', due: grammar.studyQueue.length },
-    { to: '/particles',  icon: Zap,      title: 'Particles',  jp: '助詞', desc: `${particles.length} particles`,    color: 'var(--accent)', due: particlesDeck.studyQueue.length },
+    { to: '/vocabulary', icon: BookOpen,    title: 'Vocabulary', jp: '語彙', desc: `${vocabulary.length} N5 words`,         color: '#4ade80',       due: vocab.studyQueue.length },
+    { to: '/grammar',    icon: Layers,      title: 'Grammar',    jp: '文法', desc: `${grammarPoints.length} patterns`,      color: '#60a5fa',       due: grammar.studyQueue.length },
+    { to: '/particles',  icon: Zap,         title: 'Particles',  jp: '助詞', desc: `${particles.length} particles`,         color: 'var(--accent)', due: particlesDeck.studyQueue.length },
+    { to: '/kana',       icon: ALargeSmall, title: 'Kana',       jp: 'かな', desc: `${kanaEntries.length} characters`,      color: '#a78bfa',       due: kanaDeck.studyQueue.length },
+    { to: '/kanji',      icon: PenLine,     title: 'Kanji',      jp: '漢字', desc: `${kanjiEntries.length} N5 kanji`,       color: '#f59e0b',       due: kanjiDeck.studyQueue.length },
+    { to: '/clt',        icon: School,      title: 'CLT A1.1+',  jp: 'CLT', desc: 'Oral exam vocabulary',                  color: '#f472b6',       due: 0 },
   ];
 
   return (
@@ -160,7 +177,7 @@ export default function Home() {
       <motion.div initial={{ opacity: 0, y: 16 }} animate={{ opacity: 1, y: 0 }} transition={{ duration: 0.5 }}>
         <p className="jp text-5xl font-bold mb-2" style={{ color: 'var(--accent)' }}>日本語</p>
         <h1 className="text-2xl font-semibold text-white mb-2">Learn Japanese</h1>
-        <p className="text-sm mb-8" style={{ color: 'var(--muted)' }}>JLPT N5 · Vocabulary, Grammar & Particles</p>
+        <p className="text-sm mb-8" style={{ color: 'var(--muted)' }}>JLPT N5 · Vocabulary, Grammar, Kana, Kanji & more</p>
       </motion.div>
 
       {/* Streak + 7-day history */}
@@ -253,6 +270,22 @@ export default function Home() {
           total={particles.length}
           stats={particlesDeck.stats}
           color="var(--accent)"
+        />
+        <div style={{ borderTop: '1px solid var(--border)' }} />
+        <DeckProgress
+          label="Kana" jp="かな"
+          studied={kanaEntries.length - kanaDeck.stats.new}
+          total={kanaEntries.length}
+          stats={kanaDeck.stats}
+          color="#a78bfa"
+        />
+        <div style={{ borderTop: '1px solid var(--border)' }} />
+        <DeckProgress
+          label="Kanji" jp="漢字"
+          studied={kanjiEntries.length - kanjiDeck.stats.new}
+          total={kanjiEntries.length}
+          stats={kanjiDeck.stats}
+          color="#f59e0b"
         />
       </motion.div>
 
