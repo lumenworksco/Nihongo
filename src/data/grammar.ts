@@ -527,6 +527,117 @@ export const grammarPoints: GrammarPoint[] = [
     relatedPatterns: ['te-iru'],
   },
 
+  // ── Existence & location ─────────────────────────────────────────────────────
+  {
+    id: 'aru-iru',
+    pattern: 'ある / いる',
+    romaji: 'aru / iru',
+    meaning: 'to exist — inanimate (ある) vs animate (いる)',
+    level: 'N5',
+    structure: '[Place] に [Thing] が ある/いる',
+    explanation:
+      'ある is used for inanimate things (objects, plants, places). いる is used for animate things (people, animals). Both express existence or location. Negative: ない / いない.',
+    examples: [
+      { jp: '机の上に本があります。', en: 'There is a book on the desk.' },
+      { jp: '公園に子供がいます。', en: 'There are children in the park.' },
+      { jp: '冷蔵庫にビールはありません。', en: 'There is no beer in the fridge.' },
+    ],
+    notes: 'ある can also mean "to have" when the subject is the possessor: お金がある (I have money).',
+    relatedPatterns: ['te-iru'],
+  },
+
+  // ── Invitation & suggestion ───────────────────────────────────────────────────
+  {
+    id: 'mashou',
+    pattern: '〜ましょう / 〜ましょうか',
+    romaji: '~mashou / ~mashou ka',
+    meaning: "let's ~, shall we?",
+    level: 'N5',
+    structure: 'Verb stem + ましょう / ましょうか',
+    explanation:
+      'ましょう proposes doing something together ("Let\'s…"). ましょうか offers to do something or invites the listener ("Shall we…? / Shall I…?"). In casual speech, replace with verb stem + よう.',
+    examples: [
+      { jp: '一緒に昼ご飯を食べましょう。', en: "Let's eat lunch together." },
+      { jp: '少し休みましょうか。', en: 'Shall we rest a little?' },
+      { jp: 'そろそろ行きましょうか。', en: "Shall we get going?" },
+    ],
+    relatedPatterns: ['masu'],
+  },
+
+  // ── Explanation & emphasis ────────────────────────────────────────────────────
+  {
+    id: 'n-desu',
+    pattern: '〜んです / 〜んですか',
+    romaji: '~n desu / ~n desu ka',
+    meaning: 'it is that ~, you see (explanatory / seeking explanation)',
+    level: 'N5',
+    structure: 'Plain form + んです (written: のです)',
+    explanation:
+      'Adds an explanatory or empathetic nuance. As a statement it explains context ("the reason is…"). As a question 〜んですか it seeks an explanation or expresses surprise. Very common in natural speech.',
+    examples: [
+      { jp: '遅れてすみません、電車が遅れたんです。', en: "Sorry I'm late — the train was delayed, you see." },
+      { jp: '顔色が悪いですね。どうしたんですか？', en: "You look pale. What's wrong?" },
+      { jp: '実は、明日引っ越すんです。', en: 'Actually, I\'m moving tomorrow, you see.' },
+    ],
+    notes: 'In casual speech んです → んだ (statement) / んだけど / んだっけ.',
+    relatedPatterns: ['kara-reason', 'node'],
+  },
+
+  // ── Comparison ────────────────────────────────────────────────────────────────
+  {
+    id: 'yori-houga',
+    pattern: '〜より / 〜のほうが',
+    romaji: '~yori / ~no hou ga',
+    meaning: 'more ~ than ~ / ~ is more ~',
+    level: 'N5',
+    structure: 'A より B のほうが [adjective/adverb]',
+    explanation:
+      'より marks the thing being compared against ("than A"). のほうが marks the superior/preferable item ("B is more…"). To ask which is preferred: どちらのほうが〜ですか？ To say "the most": 一番。',
+    examples: [
+      { jp: '東京は大阪より大きいです。', en: 'Tokyo is bigger than Osaka.' },
+      { jp: '電車よりバスのほうが安いです。', en: 'The bus is cheaper than the train.' },
+      { jp: 'どちらのほうが好きですか？', en: 'Which do you prefer?' },
+    ],
+    relatedPatterns: ['desu'],
+  },
+
+  // ── Adjective conjugation ─────────────────────────────────────────────────────
+  {
+    id: 'i-adj-forms',
+    pattern: 'い-adjective forms',
+    romaji: 'i-adjective conjugation',
+    meaning: 'negative, past, and adverbial forms of い-adjectives',
+    level: 'N5',
+    structure: 'い-adj: drop い → + くない / くなかった / かった / く',
+    explanation:
+      'い-adjectives conjugate directly without です for plain speech. Four key forms: (1) Present negative: drop い + くない (e.g. 高くない). (2) Past affirmative: drop い + かった (e.g. 高かった). (3) Past negative: drop い + くなかった. (4) Adverbial: drop い + く (e.g. 早く起きる). Exception: いい (good) → よくない / よかった.',
+    examples: [
+      { jp: 'この店はそんなに高くないです。', en: "This shop isn't that expensive." },
+      { jp: '昨日は寒かったですね。', en: "It was cold yesterday, wasn't it?" },
+      { jp: 'もっと早く来てください。', en: 'Please come earlier.' },
+    ],
+    notes: 'いい (good) is irregular: よくない (not good), よかった (was good), よく (well).',
+    relatedPatterns: ['desu', 'ni-naru'],
+  },
+
+  // ── Prohibition ───────────────────────────────────────────────────────────────
+  {
+    id: 'naide-kudasai',
+    pattern: '〜ないでください',
+    romaji: '~naide kudasai',
+    meaning: 'please do not ~',
+    level: 'N5',
+    structure: 'Verb ない-form (drop い) + でください',
+    explanation:
+      'A polite negative request — asking someone not to do something. Formed by taking the ない-form, dropping the final い, and adding でください. Compare to 〜てはいけません (prohibition) which is stronger and more rule-based.',
+    examples: [
+      { jp: 'ここで写真を撮らないでください。', en: 'Please do not take photos here.' },
+      { jp: '廊下を走らないでください。', en: 'Please do not run in the hallway.' },
+      { jp: '心配しないでください。', en: 'Please do not worry.' },
+    ],
+    relatedPatterns: ['te-form', 'mo-ii'],
+  },
+
   // ── Useful structures ─────────────────────────────────────────────────────────
   {
     id: 'kata',
