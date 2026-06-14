@@ -29,3 +29,36 @@ body {
 
 * { scrollbar-width: none; }
 ::-webkit-scrollbar { display: none; }
+
+/* Pointer cursor on interactive elements */
+button, [role='button'], a, label { cursor: pointer; }
+
+/* Range input — track is styled via inline gradient; thumb styled here */
+input[type='range'] {
+  -webkit-appearance: none;
+  appearance: none;
+  cursor: pointer;
+  outline: none;
+}
+input[type='range']::-webkit-slider-thumb {
+  -webkit-appearance: none;
+  width: 17px;
+  height: 17px;
+  border-radius: 50%;
+  background: #ffffff;
+  cursor: pointer;
+  box-shadow: 0 1px 4px rgba(0, 0, 0, 0.5), 0 0 0 1.5px rgba(255, 255, 255, 0.12);
+  transition: transform 0.1s ease;
+}
+input[type='range']:active::-webkit-slider-thumb {
+  transform: scale(1.18);
+}
+input[type='range']::-moz-range-thumb {
+  width: 17px;
+  height: 17px;
+  border: none;
+  border-radius: 50%;
+  background: #ffffff;
+  cursor: pointer;
+  box-shadow: 0 1px 4px rgba(0, 0, 0, 0.5);
+}

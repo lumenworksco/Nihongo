@@ -1,5 +1,5 @@
 import { useState, useEffect, useCallback, useRef } from 'react';
-import { RotateCcw, Flame, Bell, BellOff, BellRing, LogOut, User, Sparkles, ShieldAlert } from 'lucide-react';
+import { RotateCcw, Flame, Bell, BellOff, BellRing, LogOut, User, Sparkles, ShieldAlert, AlertCircle } from 'lucide-react';
 import { motion, AnimatePresence } from 'framer-motion';
 import { loadSettings, saveSettings, resetDeck } from '../lib/storage';
 import { pushSettings, deleteDeckFromSupabase } from '../lib/sync';
@@ -36,7 +36,7 @@ function sliderTrack(value: number, min: number, max: number, color: string): Re
 
 function SectionHeader({ label }: { label: string }) {
   return (
-    <p className="text-[10px] font-mono uppercase tracking-widest mb-5" style={{ color: 'var(--accent)' }}>
+    <p className="text-[10px] font-mono uppercase tracking-widest mb-4" style={{ color: 'var(--accent)' }}>
       {label}
     </p>
   );
@@ -50,6 +50,7 @@ export default function SettingsPage() {
   const [resetDone, setResetDone]     = useState<string | null>(null);
   const [notifStatus, setNotifStatus] = useState<NotificationStatus>('default');
   const [notifBusy, setNotifBusy]     = useState(false);
+  const [notifError, setNotifError]   = useState(false);
   const saveTimer = useRef<ReturnType<typeof setTimeout> | null>(null);
 
   useEffect(() => {
@@ -89,17 +90,32 @@ export default function SettingsPage() {
   const handleEnableNotifications = async () => {
     if (!user) return;
     setNotifBusy(true);
-    const ok = await subscribeToPush(user.id);
-    setNotifStatus(ok ? 'subscribed' : await getNotificationStatus());
-    setNotifBusy(false);
+    setNotifError(false);
+    try {
+      const ok = await subscribeToPush(user.id);
+      if (ok) {
+        setNotifStatus('subscribed');
+      } else {
+        const updated = await getNotificationStatus();
+        setNotifStatus(updated);
+        if (updated !== 'subscribed') setNotifError(true);
+      }
+    } catch {
+      setNotifError(true);
+    } finally {
+      setNotifBusy(false);
+    }
   };
 
   const handleDisableNotifications = async () => {
     if (!user) return;
     setNotifBusy(true);
-    await unsubscribeFromPush(user.id);
-    setNotifStatus('default');
-    setNotifBusy(false);
+    try {
+      await unsubscribeFromPush(user.id);
+      setNotifStatus('default');
+    } finally {
+      setNotifBusy(false);
+    }
   };
 
   const handleSignOut = async () => {
@@ -223,6 +239,7 @@ export default function SettingsPage() {
           )}
 
           {(notifStatus === 'default' || notifStatus === 'subscribed') && (
+            <div className="flex flex-col gap-3">
             <div className="flex items-center gap-4">
               <div
                 className="p-2.5 rounded-xl shrink-0"
@@ -250,7 +267,7 @@ export default function SettingsPage() {
                 <button
                   onClick={handleDisableNotifications}
                   disabled={notifBusy}
-                  className="shrink-0 px-4 py-2 rounded-xl text-xs font-medium transition-opacity disabled:opacity-50"
+                  className="cursor-pointer shrink-0 px-4 py-2 rounded-xl text-xs font-medium transition-opacity disabled:opacity-50"
                   style={{ background: 'rgba(239,68,68,0.08)', color: '#ef4444', border: '1px solid rgba(239,68,68,0.2)' }}
                 >
                   {notifBusy ? '…' : 'Turn off'}
@@ -259,12 +276,19 @@ export default function SettingsPage() {
                 <button
                   onClick={handleEnableNotifications}
                   disabled={notifBusy}
-                  className="shrink-0 px-4 py-2 rounded-xl text-xs font-medium transition-opacity disabled:opacity-50"
+                  className="cursor-pointer shrink-0 px-4 py-2 rounded-xl text-xs font-medium transition-opacity disabled:opacity-50"
                   style={{ background: 'rgba(251,146,60,0.12)', color: '#fb923c', border: '1px solid rgba(251,146,60,0.25)' }}
                 >
                   {notifBusy ? '…' : 'Enable'}
                 </button>
               )}
+            </div>
+            {notifError && (
+              <div className="flex items-center gap-2 text-xs" style={{ color: '#fb923c' }}>
+                <AlertCircle size={12} />
+                Could not enable — check browser notification permissions and try again.
+              </div>
+            )}
             </div>
           )}
         </motion.div>
@@ -289,7 +313,7 @@ export default function SettingsPage() {
             </div>
             <button
               onClick={handleSignOut}
-              className="shrink-0 flex items-center gap-2 px-4 py-2 rounded-xl text-xs font-medium transition-opacity hover:opacity-80"
+              className="cursor-pointer shrink-0 flex items-center gap-2 px-4 py-2 rounded-xl text-xs font-medium transition-opacity hover:opacity-80"
               style={{ background: 'var(--faint)', color: 'var(--muted)', border: '1px solid var(--border)' }}
             >
               <LogOut size={12} />
@@ -322,11 +346,13 @@ export default function SettingsPage() {
         className="rounded-2xl p-5"
         style={{ background: 'var(--surface)', border: '1px solid var(--border)' }}
       >
-        <div className="flex items-center gap-2 mb-1">
-          <ShieldAlert size={13} style={{ color: '#ef4444' }} />
-          <SectionHeader label="Reset progress" />
+        <div className="flex items-center gap-1.5 mb-2">
+          <ShieldAlert size={12} style={{ color: '#ef4444' }} />
+          <span className="text-[10px] font-mono uppercase tracking-widest" style={{ color: 'var(--accent)' }}>
+            Reset progress
+          </span>
         </div>
-        <p className="text-xs mb-5 -mt-4" style={{ color: 'var(--muted)' }}>
+        <p className="text-xs mb-5" style={{ color: 'var(--muted)' }}>
           Permanently deletes SRS data for a deck. Streak and session history are kept.
         </p>
 
@@ -344,7 +370,7 @@ export default function SettingsPage() {
               </div>
               <button
                 onClick={() => handleReset(id, label)}
-                className="flex items-center gap-1.5 px-3 py-1.5 rounded-lg text-xs font-medium transition-all"
+                className="cursor-pointer flex items-center gap-1.5 px-3 py-1.5 rounded-lg text-xs font-medium transition-all"
                 style={{
                   background: resetDone === id ? 'rgba(74,222,128,0.1)' : 'rgba(239,68,68,0.07)',
                   color: resetDone === id ? '#4ade80' : '#ef4444',
@@ -359,7 +385,7 @@ export default function SettingsPage() {
 
           <button
             onClick={handleResetAll}
-            className="mt-2 flex items-center justify-center gap-2 w-full py-3 rounded-xl text-sm font-medium transition-all"
+            className="cursor-pointer mt-2 flex items-center justify-center gap-2 w-full py-3 rounded-xl text-sm font-medium transition-all"
             style={{
               background: resetDone === 'all' ? 'rgba(74,222,128,0.08)' : 'transparent',
               color: resetDone === 'all' ? '#4ade80' : '#ef4444',
