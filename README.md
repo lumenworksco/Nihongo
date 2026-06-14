@@ -1,73 +1,108 @@
-# React + TypeScript + Vite
+# Nihongo — Japanese Learning PWA
 
-This template provides a minimal setup to get React working in Vite with HMR and some ESLint rules.
+A full-featured, offline-first Japanese learning app built as a Progressive Web App. Covers the JLPT N5 curriculum with spaced-repetition flashcards, grammar reference, kana charts, kanji, reading practice, and mock exams.
 
-Currently, two official plugins are available:
+## Features
 
-- [@vitejs/plugin-react](https://github.com/vitejs/vite-plugin-react/blob/main/packages/plugin-react) uses [Oxc](https://oxc.rs)
-- [@vitejs/plugin-react-swc](https://github.com/vitejs/vite-plugin-react/blob/main/packages/plugin-react-swc) uses [SWC](https://swc.rs/)
+- **Spaced Repetition (SRS)** — SM2-based algorithm across Vocabulary (720 words), Grammar (39 points), Particles, Kana (104 characters), and Kanji (83 characters)
+- **Streak system** — Duolingo-style daily streaks with freeze shields (earned every 7 days, max 3), milestone celebrations, and animated modals
+- **Push notifications** — Personalized timing based on each user's historical study hour; escalating copy; milestone-tomorrow detection
+- **Mock exams** — Timed JLPT N5-style exam generator
+- **Reading practice** — Graded reading passages
+- **Offline-first** — All study data lives in `localStorage`; full SRS works with no connection
+- **Cloud sync** — Supabase auth + PostgreSQL backs up streaks and session history; anonymous progress migrates on sign-in
+- **PWA** — Installable, service-worker cached, Web Push subscriptions
 
-## React Compiler
+## Tech Stack
 
-The React Compiler is not enabled on this template because of its impact on dev & build performances. To add it, see [this documentation](https://react.dev/learn/react-compiler/installation).
+| Layer | Choice |
+|---|---|
+| Framework | React 19 + TypeScript |
+| Build | Vite + VitePWA (injectManifest) |
+| Service worker | Workbox (precache + navigation route) |
+| Styling | Tailwind CSS |
+| Animations | Framer Motion |
+| Icons | Lucide React |
+| Routing | React Router v7 |
+| Backend | Supabase (PostgreSQL + Auth + Edge Functions) |
+| Push | Web Push API / VAPID via `web-push` on Deno |
+| Scheduling | pg_cron + pg_net (hourly, per-user timing) |
 
-## Expanding the ESLint configuration
+## Project Structure
 
-If you are developing a production application, we recommend updating the configuration to enable type-aware lint rules:
-
-```js
-export default defineConfig([
-  globalIgnores(['dist']),
-  {
-    files: ['**/*.{ts,tsx}'],
-    extends: [
-      // Other configs...
-
-      // Remove tseslint.configs.recommended and replace with this
-      tseslint.configs.recommendedTypeChecked,
-      // Alternatively, use this for stricter rules
-      tseslint.configs.strictTypeChecked,
-      // Optionally, add this for stylistic rules
-      tseslint.configs.stylisticTypeChecked,
-
-      // Other configs...
-    ],
-    languageOptions: {
-      parserOptions: {
-        project: ['./tsconfig.node.json', './tsconfig.app.json'],
-        tsconfigRootDir: import.meta.dirname,
-      },
-      // other options...
-    },
-  },
-])
+```
+src/
+  components/       # Sidebar, StreakModal, StudySession
+  contexts/         # AuthContext (Supabase session)
+  data/             # Static JLPT N5 content (vocab, grammar, kana, kanji, ...)
+  hooks/            # useProgress (SRS + streak integration)
+  lib/
+    srs.ts          # SM2 scheduler
+    storage.ts      # localStorage read/write, streak logic, reconcileStreak
+    streakEvents.ts # Cross-component streak event bus
+    sync.ts         # Supabase push/pull for streaks and sessions
+    notifications.ts# Web Push subscription management
+    studyCards.ts   # Builds study queues from deck data + SRS state
+  pages/            # Home, Vocabulary, Grammar, Kana, Kanji, Particles,
+                    #   CLT, Reading, Exam, Settings, Auth
+  sw.ts             # Custom Workbox service worker (push + notificationclick)
+  App.tsx           # Route shell, auth effect, reconcileStreak on load
+supabase/
+  schema.sql        # streaks, sessions, push_subscriptions tables + RLS
+  cron.sql          # Hourly pg_cron job setup
+  functions/
+    send-push/      # Deno Edge Function — personalized push dispatch
 ```
 
-You can also install [eslint-plugin-react-x](https://github.com/Rel1cx/eslint-react/tree/main/packages/plugins/eslint-plugin-react-x) and [eslint-plugin-react-dom](https://github.com/Rel1cx/eslint-react/tree/main/packages/plugins/eslint-plugin-react-dom) for React-specific lint rules:
+## Getting Started
 
-```js
-// eslint.config.js
-import reactX from 'eslint-plugin-react-x'
-import reactDom from 'eslint-plugin-react-dom'
-
-export default defineConfig([
-  globalIgnores(['dist']),
-  {
-    files: ['**/*.{ts,tsx}'],
-    extends: [
-      // Other configs...
-      // Enable lint rules for React
-      reactX.configs['recommended-typescript'],
-      // Enable lint rules for React DOM
-      reactDom.configs.recommended,
-    ],
-    languageOptions: {
-      parserOptions: {
-        project: ['./tsconfig.node.json', './tsconfig.app.json'],
-        tsconfigRootDir: import.meta.dirname,
-      },
-      // other options...
-    },
-  },
-])
+```bash
+npm install
+cp .env.local.example .env.local   # fill in Supabase + VAPID keys
+npm run dev
 ```
+
+### Environment variables (`.env.local`)
+
+```
+VITE_SUPABASE_URL=https://<project>.supabase.co
+VITE_SUPABASE_ANON_KEY=<anon-key>
+VITE_VAPID_PUBLIC_KEY=<vapid-public-key>
+```
+
+### Build
+
+```bash
+npm run build      # outputs to dist/
+npm run preview    # serve the built PWA locally
+```
+
+### Type check
+
+```bash
+npx tsc -b
+```
+
+## Supabase Setup
+
+1. Enable **pg_cron** and **pg_net** extensions (Dashboard → Database → Extensions).
+2. Run `supabase/schema.sql` to create tables and RLS policies.
+3. Run `supabase/cron.sql` (replace `YOUR_SERVICE_ROLE_KEY`) to schedule the hourly push job.
+4. Set Edge Function secrets:
+   ```bash
+   supabase secrets set VAPID_PUBLIC_KEY=<key> VAPID_PRIVATE_KEY=<key>
+   ```
+5. Deploy the Edge Function:
+   ```bash
+   supabase functions deploy send-push
+   ```
+
+## Push Notifications
+
+The Edge Function runs hourly. For each user with an active streak who hasn't studied today, it computes their preferred study hour from the last 14 days of sessions and sends a notification only at that exact UTC hour — one notification per user per day. Copy escalates from gentle morning reminders to progressively more urgent late-night warnings. Stale (410 Gone) subscriptions are auto-pruned.
+
+> **iOS note:** Web Push on iOS requires the user to add the app to their home screen and iOS 16.4+.
+
+## License
+
+MIT — see [LICENSE](LICENSE).

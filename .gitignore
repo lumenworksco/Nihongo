@@ -1,5 +1,26 @@
+# Dependencies
+node_modules/
+
+# Build output
+dist/
+dist-ssr/
+
+# Environment — never commit secrets
+.env
+.env.local
+.env.*.local
+
+# Supabase local dev
+.supabase/
+supabase/.temp/
+
+# PWA / Workbox generated files (emitted at build time)
+dev-dist/
+public/sw.js
+public/workbox-*.js
+
 # Logs
-logs
+logs/
 *.log
 npm-debug.log*
 yarn-debug.log*
@@ -7,18 +28,25 @@ yarn-error.log*
 pnpm-debug.log*
 lerna-debug.log*
 
-node_modules
-dist
-dist-ssr
-*.local
+# macOS
+.DS_Store
+.AppleDouble
+.LSOverride
 
-# Editor directories and files
+# Editor
 .vscode/*
 !.vscode/extensions.json
-.idea
-.DS_Store
+.idea/
 *.suo
 *.ntvs*
 *.njsproj
 *.sln
 *.sw?
+
+# TypeScript incremental build cache
+*.tsbuildinfo
+
+# Playwright test artifacts
+/test-results/
+/playwright-report/
+/playwright/.cache/
