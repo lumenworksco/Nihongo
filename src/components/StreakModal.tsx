@@ -16,19 +16,6 @@ interface Props {
   onClose: () => void;
 }
 
-function Overlay({ onClose }: { onClose: () => void }) {
-  return (
-    <motion.div
-      className="fixed inset-0 z-50 flex items-center justify-center px-4"
-      initial={{ opacity: 0 }}
-      animate={{ opacity: 1 }}
-      exit={{ opacity: 0 }}
-      style={{ background: 'rgba(0,0,0,0.75)', backdropFilter: 'blur(4px)' }}
-      onClick={onClose}
-    />
-  );
-}
-
 function GoalMetModal({ event, onClose }: { event: Extract<StreakEvent, { type: 'goal-met' }>; onClose: () => void }) {
   return (
     <motion.div
