@@ -16,6 +16,7 @@ import Kana from './pages/Kana';
 import Kanji from './pages/Kanji';
 import Reading from './pages/Reading';
 import Exam from './pages/Exam';
+import StatsPage from './pages/Stats';
 import SettingsPage from './pages/Settings';
 import AuthPage from './pages/Auth';
 
@@ -114,6 +115,7 @@ function AppInner() {
             <Route path="/kanji"      element={<Kanji />} />
             <Route path="/reading"    element={<Reading />} />
             <Route path="/exam"       element={<Exam />} />
+            <Route path="/stats"      element={<StatsPage />} />
             <Route path="/settings"   element={<SettingsPage />} />
             <Route path="/auth"       element={<AuthPage />} />
           </Routes>

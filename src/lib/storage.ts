@@ -1,7 +1,9 @@
-import type { CardState } from './srs';
+import type { CardState, SM2CardState } from './srs';
+import { convertSM2ToFSRS } from './srs';
 import { setPendingStreakEvent } from './streakEvents';
 
-const DECK_KEY         = (id: string) => `nihongo_srs_${id}_v2`;
+const DECK_KEY_V2 = (id: string) => `nihongo_srs_${id}_v2`;
+const DECK_KEY    = (id: string) => `nihongo_srs_${id}_v3`;
 export const STREAK_KEY    = 'nihongo_streak_v1';
 export const HISTORY_KEY   = 'nihongo_history_v1';
 export const SUSPENDED_KEY = 'nihongo_suspended_v1';
@@ -9,9 +11,26 @@ const SETTINGS_KEY  = 'nihongo_settings_v1';
 
 // ── SRS deck state ─────────────────────────────────────────────────────────────
 
+// On first load with v3 key, automatically migrate any existing SM2 (v2) data.
 export function loadDeckStates(deckId: string): Record<string, CardState> {
-  try { return JSON.parse(localStorage.getItem(DECK_KEY(deckId)) ?? '{}'); }
-  catch { return {}; }
+  try {
+    const v3 = localStorage.getItem(DECK_KEY(deckId));
+    if (v3) return JSON.parse(v3);
+
+    // One-time migration: v2 SM2 → v3 FSRS
+    const v2 = localStorage.getItem(DECK_KEY_V2(deckId));
+    if (!v2) return {};
+    const sm2Map: Record<string, SM2CardState> = JSON.parse(v2);
+    const migrated: Record<string, CardState> = {};
+    for (const [key, sm2] of Object.entries(sm2Map)) {
+      migrated[key] = convertSM2ToFSRS(sm2);
+    }
+    localStorage.setItem(DECK_KEY(deckId), JSON.stringify(migrated));
+    localStorage.removeItem(DECK_KEY_V2(deckId));
+    return migrated;
+  } catch {
+    return {};
+  }
 }
 
 export function persistDeckStates(deckId: string, all: Record<string, CardState>) {
@@ -159,4 +178,5 @@ export function persistSuspended(suspended: Set<string>): void {
 // Reset a deck completely
 export function resetDeck(deckId: string): void {
   localStorage.removeItem(DECK_KEY(deckId));
+  localStorage.removeItem(DECK_KEY_V2(deckId)); // clean up legacy key if present
 }

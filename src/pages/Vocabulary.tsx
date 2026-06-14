@@ -106,7 +106,7 @@ function WordCard({ word, state, isSuspended, onToggleSuspend }: {
                 </span>
                 {state && (
                   <span className="text-[11px] font-mono" style={{ color: 'var(--muted)' }}>
-                    ease: {state.easeFactor.toFixed(2)}
+                    stab: {state.stability.toFixed(1)}d
                   </span>
                 )}
               </div>

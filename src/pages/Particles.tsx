@@ -108,7 +108,7 @@ function ParticleCard({ p, state, isSuspended, onToggleSuspend }: {
                 <div className="flex flex-wrap gap-x-4 gap-y-1 mb-3">
                   <span className="text-[11px] font-mono" style={{ color: 'var(--muted)' }}>interval: {formatInterval(state)}</span>
                   <span className="text-[11px] font-mono" style={{ color: 'var(--muted)' }}>due: {formatDue(state)}</span>
-                  {state && <span className="text-[11px] font-mono" style={{ color: 'var(--muted)' }}>ease: {state.easeFactor.toFixed(2)}</span>}
+                  {state && <span className="text-[11px] font-mono" style={{ color: 'var(--muted)' }}>stab: {state.stability.toFixed(1)}d</span>}
                 </div>
                 <button
                   onClick={e => { e.stopPropagation(); onToggleSuspend(); }}
