@@ -57,6 +57,7 @@ export async function pullUserData(userId: string): Promise<boolean> {
       longest: s.longest_streak,
       lastStudyDate: s.last_study_date,
       totalDays: s.total_days,
+      freezesAvailable: s.freezes_available ?? 0,
     };
     localStorage.setItem(STREAK_KEY, JSON.stringify(streak));
   }
@@ -122,6 +123,7 @@ export async function pushAllLocalData(userId: string): Promise<void> {
     longest_streak: streak.longest,
     last_study_date: streak.lastStudyDate,
     total_days: streak.totalDays,
+    freezes_available: streak.freezesAvailable ?? 0,
   }, { onConflict: 'user_id' });
 
   const history = loadHistory();
@@ -176,6 +178,7 @@ export function pushStreak(userId: string, streak: StreakData): void {
     longest_streak: streak.longest,
     last_study_date: streak.lastStudyDate,
     total_days: streak.totalDays,
+    freezes_available: streak.freezesAvailable ?? 0,
   }, { onConflict: 'user_id' }).then(() => {});
 }
 

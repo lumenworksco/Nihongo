@@ -230,6 +230,12 @@ export default function Home() {
               <p className="text-[11px]" style={{ color: 'var(--muted)' }}>
                 Longest: {streak.longest} · Total: {streak.totalDays} days
               </p>
+              {(streak.freezesAvailable ?? 0) > 0 && (
+                <p className="text-[10px] mt-0.5" style={{ color: '#38bdf8' }}>
+                  {'🧊'.repeat(streak.freezesAvailable ?? 0)}{' '}
+                  {streak.freezesAvailable} freeze shield{(streak.freezesAvailable ?? 0) !== 1 ? 's' : ''} banked
+                </p>
+              )}
               {/* Daily goal progress */}
               <div className="mt-2.5 flex flex-col gap-1">
                 <div className="flex items-center justify-between">

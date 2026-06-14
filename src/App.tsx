@@ -2,8 +2,8 @@ import { useState, useEffect, useCallback } from 'react';
 import { BrowserRouter, Routes, Route } from 'react-router-dom';
 import { Loader2 } from 'lucide-react';
 import { AuthProvider, useAuth } from './contexts/AuthContext';
-import { pullUserData, pushAllLocalData } from './lib/sync';
-import { reconcileStreak } from './lib/storage';
+import { pullUserData, pushAllLocalData, pushStreak } from './lib/sync';
+import { reconcileStreak, loadStreak } from './lib/storage';
 import { consumePendingStreakEvent, WIN_EVENT, type StreakEvent } from './lib/streakEvents';
 import Sidebar from './components/Sidebar';
 import StreakModal from './components/StreakModal';
@@ -62,7 +62,17 @@ function AppInner() {
       })
       .catch(console.error)
       .finally(() => {
-        checkStreakEvent(); // reconcile AFTER cloud data is written
+        // Reconcile AFTER cloud data is written to localStorage
+        reconcileStreak();
+        const ev = consumePendingStreakEvent();
+        if (ev) {
+          setStreakEvent(ev);
+          // Push freeze consumption or streak break back to Supabase immediately,
+          // otherwise the next pullUserData would restore the stale pre-reconcile state.
+          if (ev.type === 'streak-frozen' || ev.type === 'streak-broken') {
+            pushStreak(user.id, loadStreak());
+          }
+        }
         setReady(true);
         setSyncEpoch(e => e + 1);
       });

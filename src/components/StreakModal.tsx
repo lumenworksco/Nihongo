@@ -208,6 +208,116 @@ function MilestoneModal({ event, onClose }: { event: Extract<StreakEvent, { type
   );
 }
 
+function StreakFrozenModal({ event, onClose }: { event: Extract<StreakEvent, { type: 'streak-frozen' }>; onClose: () => void }) {
+  return (
+    <motion.div
+      className="fixed inset-0 z-50 flex items-end sm:items-center justify-center px-4 pb-6 sm:pb-0"
+      initial={{ opacity: 0 }}
+      animate={{ opacity: 1 }}
+      exit={{ opacity: 0 }}
+      style={{ background: 'rgba(0,0,0,0.8)', backdropFilter: 'blur(4px)' }}
+    >
+      <motion.div
+        initial={{ scale: 0.9, y: 30, opacity: 0 }}
+        animate={{ scale: 1, y: 0, opacity: 1 }}
+        exit={{ scale: 0.95, opacity: 0 }}
+        transition={{ type: 'spring', stiffness: 360, damping: 26 }}
+        className="w-full max-w-sm rounded-3xl p-8 flex flex-col items-center text-center gap-5 relative"
+        style={{ background: '#0f0f14', border: '1px solid rgba(56,189,248,0.3)', boxShadow: '0 0 60px rgba(56,189,248,0.1)' }}
+        onClick={e => e.stopPropagation()}
+      >
+        <button onClick={onClose} className="absolute top-4 right-4 p-1.5 rounded-lg" style={{ color: 'var(--muted)', background: 'var(--faint)' }}>
+          <X size={14} />
+        </button>
+
+        <motion.div
+          initial={{ scale: 0, rotate: -10 }}
+          animate={{ scale: 1, rotate: 0 }}
+          transition={{ type: 'spring', stiffness: 340, damping: 20, delay: 0.05 }}
+          className="text-5xl"
+        >
+          🧊
+        </motion.div>
+
+        <div>
+          <motion.p
+            initial={{ opacity: 0, y: 8 }}
+            animate={{ opacity: 1, y: 0 }}
+            transition={{ delay: 0.18 }}
+            className="jp text-base mb-1"
+            style={{ color: '#38bdf8' }}
+          >
+            ストリークが守られました！
+          </motion.p>
+          <motion.h2
+            initial={{ opacity: 0, y: 8 }}
+            animate={{ opacity: 1, y: 0 }}
+            transition={{ delay: 0.22 }}
+            className="text-2xl font-bold text-white"
+          >
+            Streak Saved!
+          </motion.h2>
+        </div>
+
+        <motion.div
+          initial={{ opacity: 0 }}
+          animate={{ opacity: 1 }}
+          transition={{ delay: 0.28 }}
+          className="w-full flex gap-4"
+        >
+          <div className="flex-1 rounded-2xl py-4 flex flex-col items-center gap-1" style={{ background: 'rgba(56,189,248,0.08)', border: '1px solid rgba(56,189,248,0.15)' }}>
+            <span className="text-3xl font-bold" style={{ color: '#38bdf8' }}>{event.preserved}</span>
+            <span className="text-[11px]" style={{ color: 'var(--muted)' }}>days preserved</span>
+          </div>
+          <div className="flex-1 rounded-2xl py-4 flex flex-col items-center gap-1" style={{ background: 'rgba(56,189,248,0.08)', border: '1px solid rgba(56,189,248,0.15)' }}>
+            <span className="text-xl font-bold" style={{ color: '#38bdf8' }}>
+              {event.freezesLeft === 0 ? '—' : '🧊'.repeat(event.freezesLeft)}
+            </span>
+            <span className="text-[11px]" style={{ color: 'var(--muted)' }}>
+              {event.freezesLeft} shield{event.freezesLeft !== 1 ? 's' : ''} left
+            </span>
+          </div>
+        </motion.div>
+
+        <motion.p
+          initial={{ opacity: 0 }}
+          animate={{ opacity: 1 }}
+          transition={{ delay: 0.34 }}
+          className="text-sm leading-relaxed"
+          style={{ color: 'var(--muted)' }}
+        >
+          {event.freezesLeft === 0
+            ? "That was your last shield. Don't miss another day — you're on thin ice."
+            : 'A freeze shield protected your streak. Earn more by hitting 7-day milestones. Study today to keep it going!'}
+        </motion.p>
+
+        <motion.div
+          initial={{ opacity: 0, y: 6 }}
+          animate={{ opacity: 1, y: 0 }}
+          transition={{ delay: 0.4 }}
+          className="w-full flex flex-col gap-2"
+        >
+          <Link
+            to="/vocabulary"
+            onClick={onClose}
+            className="w-full py-3.5 rounded-2xl text-sm font-bold flex items-center justify-center gap-2 transition-opacity hover:opacity-90"
+            style={{ background: '#38bdf8', color: '#000' }}
+          >
+            Study now <ArrowRight size={15} />
+          </Link>
+          <button
+            onClick={onClose}
+            className="w-full py-3 rounded-2xl text-sm transition-opacity hover:opacity-80"
+            style={{ background: 'var(--faint)', color: 'var(--muted)', border: '1px solid var(--border)' }}
+          >
+            Got it
+          </button>
+        </motion.div>
+      </motion.div>
+    </motion.div>
+  );
+}
+
 function StreakBrokenModal({ event, onClose }: { event: Extract<StreakEvent, { type: 'streak-broken' }>; onClose: () => void }) {
   return (
     <motion.div
@@ -321,6 +431,7 @@ export default function StreakModal({ event, onClose }: Props) {
       {event.type === 'goal-met'       && <GoalMetModal       key="goal"      event={event} onClose={onClose} />}
       {event.type === 'milestone'      && <MilestoneModal     key="milestone" event={event} onClose={onClose} />}
       {event.type === 'streak-broken'  && <StreakBrokenModal  key="broken"    event={event} onClose={onClose} />}
+      {event.type === 'streak-frozen'  && <StreakFrozenModal  key="frozen"    event={event} onClose={onClose} />}
     </AnimatePresence>
   );
 }

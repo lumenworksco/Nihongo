@@ -1,7 +1,8 @@
 export type StreakEvent =
   | { type: 'goal-met'; streak: number; cardsToday: number }
   | { type: 'milestone'; streak: number }
-  | { type: 'streak-broken'; lost: number };
+  | { type: 'streak-broken'; lost: number }
+  | { type: 'streak-frozen'; preserved: number; freezesLeft: number };
 
 const KEY = 'nihongo_streak_event_v1';
 export const WIN_EVENT = 'nihongo-streak-event';
