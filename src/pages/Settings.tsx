@@ -1,9 +1,15 @@
-import { useState } from 'react';
-import { Settings2, RotateCcw } from 'lucide-react';
+import { useState, useEffect } from 'react';
+import { Settings2, RotateCcw, Flame, Bell, BellOff, BellRing } from 'lucide-react';
 import { motion } from 'framer-motion';
 import { loadSettings, saveSettings, resetDeck } from '../lib/storage';
 import { pushSettings, deleteDeckFromSupabase } from '../lib/sync';
 import { useAuth } from '../contexts/AuthContext';
+import {
+  getNotificationStatus,
+  subscribeToPush,
+  unsubscribeFromPush,
+  type NotificationStatus,
+} from '../lib/notifications';
 
 const DECKS = [
   { id: 'vocabulary', label: 'Vocabulary',   jp: '語彙' },
@@ -16,9 +22,15 @@ const DECKS = [
 
 export default function SettingsPage() {
   const { user } = useAuth();
-  const [settings, setSettings]   = useState(loadSettings);
-  const [saved, setSaved]         = useState(false);
-  const [resetDone, setResetDone] = useState<string | null>(null);
+  const [settings, setSettings]       = useState(loadSettings);
+  const [saved, setSaved]             = useState(false);
+  const [resetDone, setResetDone]     = useState<string | null>(null);
+  const [notifStatus, setNotifStatus] = useState<NotificationStatus>('default');
+  const [notifBusy, setNotifBusy]     = useState(false);
+
+  useEffect(() => {
+    getNotificationStatus().then(setNotifStatus);
+  }, []);
 
   const handleSave = () => {
     saveSettings(settings);
@@ -33,6 +45,27 @@ export default function SettingsPage() {
     if (user) deleteDeckFromSupabase(user.id, deckId);
     setResetDone(deckId);
     setTimeout(() => setResetDone(null), 2000);
+  };
+
+  const handleEnableNotifications = async () => {
+    if (!user) return;
+    setNotifBusy(true);
+    const ok = await subscribeToPush(user.id);
+    if (ok) {
+      setNotifStatus('subscribed');
+    } else {
+      const updated = await getNotificationStatus();
+      setNotifStatus(updated);
+    }
+    setNotifBusy(false);
+  };
+
+  const handleDisableNotifications = async () => {
+    if (!user) return;
+    setNotifBusy(true);
+    await unsubscribeFromPush(user.id);
+    setNotifStatus('default');
+    setNotifBusy(false);
   };
 
   const handleResetAll = () => {
@@ -93,6 +126,37 @@ export default function SettingsPage() {
               <span>30</span>
             </div>
           </div>
+
+          <div style={{ borderTop: '1px solid var(--border)', paddingTop: '1.25rem' }}>
+            <div className="flex items-center justify-between mb-2">
+              <div>
+                <p className="text-sm font-medium text-white">Daily goal</p>
+                <p className="text-xs mt-0.5" style={{ color: 'var(--muted)' }}>
+                  Cards to review per day to maintain your streak.
+                </p>
+              </div>
+              <div className="flex items-center gap-1.5">
+                <Flame size={14} style={{ color: '#fb923c' }} />
+                <span className="text-lg font-bold font-mono" style={{ color: '#fb923c' }}>
+                  {settings.dailyGoal}
+                </span>
+              </div>
+            </div>
+            <input
+              type="range"
+              min={5}
+              max={50}
+              step={5}
+              value={settings.dailyGoal}
+              onChange={e => setSettings(s => ({ ...s, dailyGoal: Number(e.target.value) }))}
+              className="w-full"
+              style={{ accentColor: '#fb923c' }}
+            />
+            <div className="flex justify-between text-[10px] font-mono mt-1" style={{ color: 'var(--muted)' }}>
+              <span>5</span>
+              <span>50</span>
+            </div>
+          </div>
         </div>
 
         <button
@@ -107,6 +171,79 @@ export default function SettingsPage() {
           {saved ? 'Saved!' : 'Save settings'}
         </button>
       </motion.div>
+
+      {/* Notifications — only meaningful when signed in */}
+      {user && (
+        <motion.div
+          initial={{ opacity: 0, y: 12 }} animate={{ opacity: 1, y: 0 }} transition={{ delay: 0.05 }}
+          className="rounded-2xl p-5 mb-4"
+          style={{ background: 'var(--surface)', border: '1px solid var(--border)' }}
+        >
+          <p className="text-xs font-mono uppercase tracking-widest mb-5" style={{ color: 'var(--accent)' }}>
+            Notifications
+          </p>
+
+          {notifStatus === 'unsupported' && (
+            <p className="text-sm" style={{ color: 'var(--muted)' }}>
+              Push notifications aren't supported in this browser.
+            </p>
+          )}
+
+          {notifStatus === 'denied' && (
+            <div className="flex items-start gap-3">
+              <BellOff size={18} className="mt-0.5 shrink-0" style={{ color: '#ef4444' }} />
+              <div>
+                <p className="text-sm font-medium text-white">Notifications blocked</p>
+                <p className="text-xs mt-1 leading-relaxed" style={{ color: 'var(--muted)' }}>
+                  You've blocked notifications for this site. To re-enable them, open your browser's
+                  site settings and allow notifications for this origin, then come back here.
+                </p>
+              </div>
+            </div>
+          )}
+
+          {(notifStatus === 'default' || notifStatus === 'subscribed') && (
+            <div className="flex items-center justify-between gap-4">
+              <div className="flex items-start gap-3">
+                {notifStatus === 'subscribed'
+                  ? <BellRing size={18} className="mt-0.5 shrink-0" style={{ color: '#fb923c' }} />
+                  : <Bell size={18} className="mt-0.5 shrink-0" style={{ color: 'var(--muted)' }} />
+                }
+                <div>
+                  <p className="text-sm font-medium text-white">
+                    {notifStatus === 'subscribed' ? 'Daily reminders on' : 'Daily reminders'}
+                  </p>
+                  <p className="text-xs mt-0.5 leading-relaxed" style={{ color: 'var(--muted)' }}>
+                    {notifStatus === 'subscribed'
+                      ? "You'll get a nudge each evening if you haven't studied yet."
+                      : 'Get a push notification each evening when your streak is at risk.'}
+                  </p>
+                </div>
+              </div>
+
+              {notifStatus === 'subscribed' ? (
+                <button
+                  onClick={handleDisableNotifications}
+                  disabled={notifBusy}
+                  className="shrink-0 px-4 py-2 rounded-xl text-xs font-medium transition-opacity disabled:opacity-50"
+                  style={{ background: 'rgba(239,68,68,0.08)', color: '#ef4444', border: '1px solid rgba(239,68,68,0.2)' }}
+                >
+                  {notifBusy ? '…' : 'Turn off'}
+                </button>
+              ) : (
+                <button
+                  onClick={handleEnableNotifications}
+                  disabled={notifBusy}
+                  className="shrink-0 px-4 py-2 rounded-xl text-xs font-medium transition-opacity disabled:opacity-50"
+                  style={{ background: 'rgba(251,146,60,0.12)', color: '#fb923c', border: '1px solid rgba(251,146,60,0.25)' }}
+                >
+                  {notifBusy ? '…' : 'Enable'}
+                </button>
+              )}
+            </div>
+          )}
+        </motion.div>
+      )}
 
       {/* Reset progress */}
       <motion.div

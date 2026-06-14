@@ -62,6 +62,26 @@ create policy "own sessions"        on public.sessions         for all using (au
 create policy "own user_settings"   on public.user_settings    for all using (auth.uid() = user_id);
 create policy "own suspended_cards" on public.suspended_cards  for all using (auth.uid() = user_id);
 
+-- Push subscriptions — one row per (user, device)
+-- Written by the client when the user enables notifications.
+-- Read by the send-push Edge Function to deliver daily reminders.
+create table public.push_subscriptions (
+  user_id    uuid not null references auth.users(id) on delete cascade,
+  endpoint   text not null,
+  p256dh     text not null,
+  auth       text not null,
+  created_at timestamptz not null default now(),
+  primary key (user_id, endpoint)
+);
+
+alter table public.push_subscriptions enable row level security;
+
+-- Users can manage their own subscriptions
+create policy "own push_subscriptions"
+  on public.push_subscriptions for all using (auth.uid() = user_id);
+
+-- The Edge Function uses the service role key so it bypasses RLS (no extra policy needed)
+
 -- ── Indexes ───────────────────────────────────────────────────────────────────
 
 create index sessions_user_created on public.sessions(user_id, created_at desc);

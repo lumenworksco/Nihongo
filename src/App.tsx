@@ -1,9 +1,12 @@
-import { useState, useEffect } from 'react';
+import { useState, useEffect, useCallback } from 'react';
 import { BrowserRouter, Routes, Route } from 'react-router-dom';
 import { Loader2 } from 'lucide-react';
 import { AuthProvider, useAuth } from './contexts/AuthContext';
 import { pullUserData, pushAllLocalData } from './lib/sync';
+import { reconcileStreak } from './lib/storage';
+import { consumePendingStreakEvent, WIN_EVENT, type StreakEvent } from './lib/streakEvents';
 import Sidebar from './components/Sidebar';
+import StreakModal from './components/StreakModal';
 import Home from './pages/Home';
 import Vocabulary from './pages/Vocabulary';
 import Grammar from './pages/Grammar';
@@ -29,13 +32,22 @@ function AppInner() {
 
   // syncEpoch forces all page components to remount after cloud data is written
   // to localStorage, so their useState hooks re-read the fresh values.
-  const [syncEpoch, setSyncEpoch] = useState(0);
-  const [ready, setReady]         = useState(false);
+  const [syncEpoch, setSyncEpoch]       = useState(0);
+  const [ready, setReady]               = useState(false);
+  const [streakEvent, setStreakEvent]   = useState<StreakEvent | null>(null);
+
+  // Run reconcile + consume any pending event (call after localStorage is settled)
+  const checkStreakEvent = useCallback(() => {
+    reconcileStreak();
+    const ev = consumePendingStreakEvent();
+    if (ev) setStreakEvent(ev);
+  }, []);
 
   useEffect(() => {
     if (authLoading) return;
 
     if (!user) {
+      checkStreakEvent();
       setReady(true);
       return;
     }
@@ -50,10 +62,21 @@ function AppInner() {
       })
       .catch(console.error)
       .finally(() => {
+        checkStreakEvent(); // reconcile AFTER cloud data is written
         setReady(true);
         setSyncEpoch(e => e + 1);
       });
-  }, [user?.id, authLoading]);
+  }, [user?.id, authLoading, checkStreakEvent]);
+
+  // Listen for events fired from study sessions on any page
+  useEffect(() => {
+    const handler = () => {
+      const ev = consumePendingStreakEvent();
+      if (ev) setStreakEvent(ev);
+    };
+    window.addEventListener(WIN_EVENT, handler);
+    return () => window.removeEventListener(WIN_EVENT, handler);
+  }, []);
 
   if (!ready) {
     return (
@@ -86,6 +109,9 @@ function AppInner() {
           </Routes>
         </main>
       </div>
+      {streakEvent && (
+        <StreakModal event={streakEvent} onClose={() => setStreakEvent(null)} />
+      )}
     </BrowserRouter>
   );
 }

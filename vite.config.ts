@@ -8,6 +8,9 @@ export default defineConfig({
     react(),
     tailwindcss(),
     VitePWA({
+      strategies: 'injectManifest',
+      srcDir: 'src',
+      filename: 'sw.ts',
       registerType: 'autoUpdate',
       injectRegister: 'auto',
       manifest: {
@@ -31,10 +34,8 @@ export default defineConfig({
           },
         ],
       },
-      workbox: {
+      injectManifest: {
         globPatterns: ['**/*.{js,css,html,ico,png,svg,woff2}'],
-        navigateFallback: 'index.html',
-        navigateFallbackDenylist: [/^\/404\.html$/],
       },
     }),
   ],

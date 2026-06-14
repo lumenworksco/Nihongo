@@ -12,7 +12,7 @@ import { useDeck } from '../hooks/useDeck';
 import { useProgress } from '../hooks/useProgress';
 import { buildVocabCards, buildGrammarCards, buildParticleCards, buildKanaCards, buildKanjiCards } from '../lib/studyCards';
 import { statusMeta } from '../lib/srs';
-import { loadSettings, type SessionRecord } from '../lib/storage';
+import { loadSettings, getDailyCardsReviewed, type SessionRecord } from '../lib/storage';
 
 const vocabCards    = buildVocabCards();
 const grammarCards  = buildGrammarCards();
@@ -124,7 +124,7 @@ function DeckProgress({ label, jp, studied, total, stats, color }: {
 }
 
 export default function Home() {
-  const maxNew = useMemo(() => loadSettings().maxNewCards, []);
+  const { maxNewCards: maxNew, dailyGoal } = useMemo(() => loadSettings(), []);
 
   const vocab         = useDeck('vocabulary', vocabCards,    false, maxNew);
   const grammar       = useDeck('grammar',    grammarCards,  false, maxNew);
@@ -132,6 +132,11 @@ export default function Home() {
   const kanaDeck      = useDeck('kana',       kanaCards,     false, maxNew);
   const kanjiDeck     = useDeck('kanji',      kanjiCards,    false, maxNew);
   const { streak, history } = useProgress();
+
+  const dailyProgress = useMemo(() => getDailyCardsReviewed(history), [history]);
+  const goalMet       = dailyProgress >= dailyGoal;
+  const today         = new Date().toISOString().slice(0, 10);
+  const isAtRisk      = streak.current > 0 && streak.lastStudyDate !== today;
 
   const totalDue = vocab.studyQueue.length + grammar.studyQueue.length + particlesDeck.studyQueue.length + kanaDeck.studyQueue.length + kanjiDeck.studyQueue.length;
 
@@ -183,6 +188,32 @@ export default function Home() {
         <p className="text-sm mb-8" style={{ color: 'var(--muted)' }}>JLPT N5 · Vocabulary, Grammar, Kana, Kanji & more</p>
       </motion.div>
 
+      {/* At-risk banner */}
+      {isAtRisk && (
+        <motion.div
+          initial={{ opacity: 0, y: -8 }} animate={{ opacity: 1, y: 0 }} transition={{ duration: 0.4, delay: 0.08 }}
+          className="rounded-2xl p-4 mb-4 flex items-center gap-3"
+          style={{ background: 'rgba(251,146,60,0.07)', border: '1px solid rgba(251,146,60,0.3)' }}
+        >
+          <div className="p-2 rounded-xl shrink-0" style={{ background: 'rgba(251,146,60,0.14)' }}>
+            <Flame size={20} className="animate-pulse" style={{ color: '#fb923c' }} />
+          </div>
+          <div className="flex-1 min-w-0">
+            <p className="text-sm font-semibold text-white">Streak at risk!</p>
+            <p className="text-xs mt-0.5" style={{ color: '#fb923c' }}>
+              Study {dailyGoal} cards today to keep your {streak.current}-day streak alive
+            </p>
+          </div>
+          <Link
+            to={bestStudyLink}
+            className="shrink-0 px-3 py-2 rounded-xl text-xs font-semibold transition-opacity hover:opacity-80"
+            style={{ background: 'rgba(251,146,60,0.18)', color: '#fb923c', border: '1px solid rgba(251,146,60,0.3)' }}
+          >
+            Study now
+          </Link>
+        </motion.div>
+      )}
+
       {/* Streak + 7-day history */}
       <motion.div
         initial={{ opacity: 0, y: 16 }} animate={{ opacity: 1, y: 0 }} transition={{ duration: 0.45, delay: 0.08 }}
@@ -199,6 +230,25 @@ export default function Home() {
               <p className="text-[11px]" style={{ color: 'var(--muted)' }}>
                 Longest: {streak.longest} · Total: {streak.totalDays} days
               </p>
+              {/* Daily goal progress */}
+              <div className="mt-2.5 flex flex-col gap-1">
+                <div className="flex items-center justify-between">
+                  <span className="text-[10px]" style={{ color: 'var(--muted)' }}>Daily goal</span>
+                  <span className="text-[10px] font-mono" style={{ color: goalMet ? '#fb923c' : 'var(--muted)' }}>
+                    {Math.min(dailyProgress, dailyGoal)}/{dailyGoal}
+                    {goalMet && ' ✓'}
+                  </span>
+                </div>
+                <div className="h-1.5 rounded-full overflow-hidden w-36" style={{ background: 'var(--faint)' }}>
+                  <motion.div
+                    className="h-full rounded-full"
+                    style={{ background: goalMet ? '#fb923c' : 'rgba(251,146,60,0.5)' }}
+                    initial={{ width: 0 }}
+                    animate={{ width: `${Math.min((dailyProgress / dailyGoal) * 100, 100)}%` }}
+                    transition={{ duration: 0.7, delay: 0.2, ease: 'easeOut' }}
+                  />
+                </div>
+              </div>
             </div>
           </div>
           {totalDue > 0 && (

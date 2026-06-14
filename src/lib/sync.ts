@@ -79,9 +79,10 @@ export async function pullUserData(userId: string): Promise<boolean> {
     localStorage.setItem(HISTORY_KEY, JSON.stringify(history));
   }
 
-  // Settings
+  // Settings — preserve local-only fields (e.g. dailyGoal not in Supabase schema)
   if (settingsRes.data) {
-    saveSettings({ maxNewCards: settingsRes.data.max_new_cards });
+    const current = loadSettings();
+    saveSettings({ ...current, maxNewCards: settingsRes.data.max_new_cards });
   }
 
   // Suspended cards

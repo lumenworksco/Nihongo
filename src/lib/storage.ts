@@ -1,4 +1,5 @@
 import type { CardState } from './srs';
+import { setPendingStreakEvent } from './streakEvents';
 
 const DECK_KEY         = (id: string) => `nihongo_srs_${id}_v2`;
 export const STREAK_KEY    = 'nihongo_streak_v1';
@@ -39,20 +40,42 @@ export function loadStreak(): StreakData {
   catch { return defaultStreak; }
 }
 
-export function touchStreak(reviewed: number): StreakData {
-  if (reviewed < 3) return loadStreak();
+export function getDailyCardsReviewed(history: SessionRecord[]): number {
+  const today = todayStr();
+  return history.filter(s => s.date === today).reduce((sum, s) => sum + s.reviewed, 0);
+}
+
+// dailyGoal is the single threshold: streak advances only when today's total hits the goal
+export function touchStreak(dailyGoal: number): StreakData {
+  const todayTotal = getDailyCardsReviewed(loadHistory());
+  if (todayTotal < dailyGoal) return loadStreak();
+
   const s = loadStreak();
   const t = todayStr();
-  if (s.lastStudyDate === t) return s;
+  if (s.lastStudyDate === t) return s; // already advanced today
+
   const continued = s.lastStudyDate === yesterdayStr();
+  const newCurrent = continued ? s.current + 1 : 1;
   const next: StreakData = {
-    current: continued ? s.current + 1 : 1,
-    longest: Math.max(s.longest, continued ? s.current + 1 : 1),
+    current: newCurrent,
+    longest: Math.max(s.longest, newCurrent),
     lastStudyDate: t,
     totalDays: s.totalDays + 1,
   };
   localStorage.setItem(STREAK_KEY, JSON.stringify(next));
   return next;
+}
+
+// Run on app load: zero out a stale streak and fire the broken event
+export function reconcileStreak(): void {
+  const s = loadStreak();
+  if (s.current === 0 || s.lastStudyDate === null) return;
+  const t = todayStr();
+  const y = yesterdayStr();
+  if (s.lastStudyDate === t || s.lastStudyDate === y) return;
+  // Missed more than one day — streak is dead
+  setPendingStreakEvent({ type: 'streak-broken', lost: s.current });
+  localStorage.setItem(STREAK_KEY, JSON.stringify({ ...s, current: 0 }));
 }
 
 // ── Session history ────────────────────────────────────────────────────────────
@@ -82,9 +105,10 @@ export function saveSession(session: Omit<SessionRecord, 'date' | 'timestamp'>) 
 
 export interface AppSettings {
   maxNewCards: number;
+  dailyGoal: number;
 }
 
-const DEFAULT_SETTINGS: AppSettings = { maxNewCards: 10 };
+const DEFAULT_SETTINGS: AppSettings = { maxNewCards: 10, dailyGoal: 10 };
 
 export function loadSettings(): AppSettings {
   try {
