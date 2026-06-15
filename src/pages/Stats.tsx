@@ -174,7 +174,7 @@ export default function Stats() {
           <h1 className="text-2xl font-semibold text-white">Progress</h1>
         </div>
         <p className="text-sm mb-8" style={{ color: 'var(--muted)' }}>
-          All-time stats · {streak.totalDays} days studied
+          All-time stats · {streak.totalDays} {streak.totalDays === 1 ? 'day' : 'days'} studied
         </p>
       </motion.div>
 
@@ -185,7 +185,7 @@ export default function Stats() {
       >
         <SummaryCard icon={Target}  label="Cards reviewed" value={summary.totalReviewed.toLocaleString()} />
         <SummaryCard icon={Zap}     label="Accuracy"       value={history.length > 0 ? `${summary.accuracy}%` : '—'} sub="good + easy" />
-        <SummaryCard icon={Calendar} label="Days studied"  value={summary.daysStudied.toString()} sub={`best: ${streak.longest} days`} />
+        <SummaryCard icon={Calendar} label="Days studied"  value={summary.daysStudied.toString()} sub={`best: ${streak.longest} ${streak.longest === 1 ? 'day' : 'days'}`} />
         <SummaryCard icon={Clock}   label="Time studied"   value={summary.totalMinutes > 0 ? formatMinutes(summary.totalMinutes) : '—'} />
       </motion.div>
 
