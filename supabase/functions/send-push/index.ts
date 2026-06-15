@@ -17,16 +17,24 @@ const corsHeaders = {
 const MILESTONES = [7, 30, 100, 365];
 const DEFAULT_NOTIFY_HOUR = 18; // UTC fallback for users with no session history
 
+function dueLabel(dueCards: number): string {
+  if (dueCards <= 0) return '';
+  return dueCards === 1 ? ' · 1 card due' : ` · ${dueCards} cards due`;
+}
+
 function notificationPayload(
   streak: number,
   utcHour: number,
+  dueCards: number,
 ): { title: string; body: string; url: string } {
+  const due = dueLabel(dueCards);
+
   // Milestone-tomorrow: they're one day away from a major milestone
   const nextMilestone = MILESTONES.find(m => streak + 1 === m);
   if (nextMilestone) {
     return {
       title: `🏆 One more day = ${nextMilestone}-day streak!`,
-      body: "Study Japanese tonight. You're SO close.",
+      body: `Study Japanese tonight. You're SO close.${due}`,
       url: '/',
     };
   }
@@ -34,9 +42,9 @@ function notificationPayload(
   // Last-chance savage (22:00+)
   if (utcHour >= 22) {
     const options = [
-      { title: `⏰ ${streak} days. The clock is ticking.`, body: "Midnight is almost here. Don't let it end like this." },
-      { title: `😤 You still haven't studied. It's nearly midnight.`, body: `${streak}-day streak. Still saveable. Barely.` },
-      { title: '🔥 Last warning.', body: `${streak} days of Japanese on the line. Study. Now.` },
+      { title: `⏰ ${streak} days. The clock is ticking.`, body: `Midnight is almost here. Don't let it end like this.${due}` },
+      { title: `😤 You still haven't studied. It's nearly midnight.`, body: `${streak}-day streak. Still saveable. Barely.${due}` },
+      { title: '🔥 Last warning.', body: `${streak} days of Japanese on the line. Study. Now.${due}` },
     ];
     return { ...options[streak % options.length], url: '/' };
   }
@@ -44,9 +52,9 @@ function notificationPayload(
   // Evening urgent (19:00–21:00)
   if (utcHour >= 19) {
     const options = [
-      { title: `🔥 ${streak}-day streak at risk!`, body: 'Study Japanese tonight before midnight to keep it alive.' },
-      { title: `😤 You forgot about us today.`, body: `${streak} days on the line. Don't let tonight be the end.` },
-      { title: `🦉 Don't make us send another one.`, body: `${streak} days is worth 5 minutes. Study.` },
+      { title: `🔥 ${streak}-day streak at risk!`, body: `Study Japanese tonight before midnight to keep it alive.${due}` },
+      { title: `😤 You forgot about us today.`, body: `${streak} days on the line. Don't let tonight be the end.${due}` },
+      { title: `🦉 Don't make us send another one.`, body: `${streak} days is worth 5 minutes. Study.${due}` },
     ];
     return { ...options[streak % options.length], url: '/' };
   }
@@ -54,9 +62,9 @@ function notificationPayload(
   // Afternoon gentle (15:00–18:00)
   if (utcHour >= 15) {
     const options = [
-      { title: '📚 Time to study Japanese!', body: `${streak} days in a row. Keep the chain alive today.` },
-      { title: `🌸 Study reminder`, body: `You have a ${streak}-day streak. A few cards keeps it going.` },
-      { title: `🎯 ${streak} days and counting`, body: "Quick session today = streak survives. Let's go!" },
+      { title: '📚 Time to study Japanese!', body: `${streak} days in a row. Keep the chain alive today.${due}` },
+      { title: `🌸 Study reminder`, body: `You have a ${streak}-day streak. A few cards keeps it going.${due}` },
+      { title: `🎯 ${streak} days and counting`, body: `Quick session today = streak survives. Let's go!${due}` },
     ];
     return { ...options[streak % options.length], url: '/' };
   }
@@ -64,7 +72,7 @@ function notificationPayload(
   // Morning / other hours
   return {
     title: '📖 Good morning! Time for Japanese.',
-    body: `${streak}-day streak on the line. A few minutes of study keeps it alive.`,
+    body: `${streak}-day streak on the line. A few minutes of study keeps it alive.${due}`,
     url: '/',
   };
 }
@@ -112,22 +120,39 @@ Deno.serve(async (req) => {
     );
   }
 
+  const nowMs = Date.now();
+
   // Compute each user's preferred study hour from their last 14 days of sessions.
   // We look at when they actually study and notify at that exact UTC hour.
-  const fourteenDaysAgo = Date.now() - 14 * 24 * 60 * 60 * 1000;
-  const { data: sessions } = await supabase
-    .from('sessions')
-    .select('user_id, created_at')
-    .in('user_id', atRisk.map(u => u.user_id))
-    .gt('created_at', fourteenDaysAgo);
+  const fourteenDaysAgo = nowMs - 14 * 24 * 60 * 60 * 1000;
+  const userIds = atRisk.map(u => u.user_id);
+
+  const [sessionsRes, dueRes] = await Promise.all([
+    supabase
+      .from('sessions')
+      .select('user_id, created_at')
+      .in('user_id', userIds)
+      .gt('created_at', fourteenDaysAgo),
+    supabase
+      .from('deck_states')
+      .select('user_id')
+      .in('user_id', userIds)
+      .lte('due_date', nowMs),
+  ]);
 
   // Rolling average UTC hour per user
   const hourAccum: Record<string, { sum: number; count: number }> = {};
-  for (const s of sessions ?? []) {
+  for (const s of sessionsRes.data ?? []) {
     const h = new Date(s.created_at as number).getUTCHours();
     if (!hourAccum[s.user_id]) hourAccum[s.user_id] = { sum: 0, count: 0 };
     hourAccum[s.user_id].sum   += h;
     hourAccum[s.user_id].count += 1;
+  }
+
+  // Due card count per user
+  const dueByUser: Record<string, number> = {};
+  for (const row of dueRes.data ?? []) {
+    dueByUser[row.user_id] = (dueByUser[row.user_id] ?? 0) + 1;
   }
 
   let totalSent = 0;
@@ -146,7 +171,8 @@ Deno.serve(async (req) => {
 
     if (!subs?.length) continue;
 
-    const payload = JSON.stringify(notificationPayload(user.current_streak, utcHour));
+    const dueCards = dueByUser[user.user_id] ?? 0;
+    const payload = JSON.stringify(notificationPayload(user.current_streak, utcHour, dueCards));
 
     for (const sub of subs) {
       try {
