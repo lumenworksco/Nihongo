@@ -36,14 +36,25 @@ function makeOptions(correct: string, pool: string[], totalOptions = 4): { optio
   return { options, correct: options.indexOf(correct) };
 }
 
+// Split on the first comma that is NOT inside parentheses
+function primaryMeaning(meaning: string): string {
+  let depth = 0;
+  for (let i = 0; i < meaning.length; i++) {
+    if (meaning[i] === '(') depth++;
+    else if (meaning[i] === ')') depth--;
+    else if (meaning[i] === ',' && depth === 0) return meaning.slice(0, i).trim();
+  }
+  return meaning.trim();
+}
+
 // ── Vocabulary: meaning questions ───────────────────────────────────────────
 function generateMeaningQuestions(n: number): ExamQuestion[] {
   const pool = vocabulary.filter(w => w.kanji.length > 0);
   const selected = pick(pool, n);
-  const allMeanings = vocabulary.map(w => w.meaning.split(',')[0].trim());
+  const allMeanings = vocabulary.map(w => primaryMeaning(w.meaning));
 
   return selected.map((word, i) => {
-    const correct = word.meaning.split(',')[0].trim();
+    const correct = primaryMeaning(word.meaning);
     const { options, correct: correctIdx } = makeOptions(correct, allMeanings);
     return {
       id: `vocab-meaning-${i}`,
