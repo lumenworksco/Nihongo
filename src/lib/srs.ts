@@ -32,7 +32,7 @@ export interface StudyCard {
   direction: 'jp-en' | 'en-jp';
   jpFront?: boolean;
   front: { primary: string; secondary?: string; tag?: string };
-  back: { primary: string; secondary?: string; detail?: string; example?: { jp: string; en: string } };
+  back: { primary: string; secondary?: string; detail?: string; example?: { jp: string; en: string }; breakdown?: { char: string; meanings: string[] }[] };
 }
 
 export type CardStatus = 'new' | 'learning' | 'review' | 'scheduled' | 'known';

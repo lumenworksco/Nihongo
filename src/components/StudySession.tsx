@@ -11,6 +11,7 @@ interface Props {
   onUndo: (cardKey: string, prevState: CardState | null) => void;
   onComplete: (reviewed: number, ratings: Record<Rating, number>, durationMs: number) => void;
   onBack: () => void;
+  typedMode?: boolean;
 }
 
 const RATING_META: { value: Rating; label: string; hint: string; color: string; key: string }[] = [
@@ -20,21 +21,54 @@ const RATING_META: { value: Rating; label: string; hint: string; color: string; 
   { value: 'easy',  label: 'Easy',   hint: 'Perfect',   color: '#60a5fa', key: '4' },
 ];
 
-export default function StudySession({ queue, onRate, onUndo, onComplete, onBack }: Props) {
+type AnswerResult = 'correct' | 'close' | 'wrong';
+
+function normalizeAnswer(s: string): string {
+  return s.toLowerCase().trim().replace(/[.,!?；。、]/g, '');
+}
+
+function checkAnswer(typed: string, correct: string): AnswerResult {
+  const t = normalizeAnswer(typed);
+  if (!t) return 'wrong';
+  const alts = correct.split(/[,、]/).map(normalizeAnswer).filter(Boolean);
+  const strip = (s: string) => s.startsWith('to ') ? s.slice(3) : s;
+  if (alts.some(a => strip(a) === strip(t))) return 'correct';
+  if (alts.some(a => a.includes(t) || t.includes(a))) return 'close';
+  return 'wrong';
+}
+
+const RESULT_META: Record<AnswerResult, { label: string; color: string; bg: string }> = {
+  correct: { label: '✓ Correct',  color: '#4ade80', bg: 'rgba(74,222,128,0.1)'  },
+  close:   { label: '~ Almost',   color: '#f59e0b', bg: 'rgba(245,158,11,0.1)'  },
+  wrong:   { label: '✗ Wrong',    color: '#ef4444', bg: 'rgba(239,68,68,0.1)'   },
+};
+
+export default function StudySession({ queue, onRate, onUndo, onComplete, onBack, typedMode = false }: Props) {
   const [localQueue, setLocalQueue] = useState<StudyCard[]>(() => [...queue]);
   const [index, setIndex]           = useState(0);
   const [revealed, setRevealed]     = useState(false);
   const [undoStack, setUndoStack]   = useState<UndoEntry[]>([]);
   const [ratings, setRatings]       = useState<Record<Rating, number>>({ again: 0, hard: 0, good: 0, easy: 0 });
   const [done, setDone]             = useState(false);
+  const [typedAnswer, setTypedAnswer]       = useState('');
+  const [answerResult, setAnswerResult]     = useState<AnswerResult | null>(null);
   const startTime                   = useRef(Date.now());
   const localQueueRef               = useRef(localQueue);
+  const inputRef                    = useRef<HTMLInputElement>(null);
   localQueueRef.current = localQueue;
 
   const card      = localQueue[index];
   const canUndo   = undoStack.length > 0;
   const isJpFront = card?.direction === 'jp-en';
   const progress  = Math.min(index / localQueue.length, 1);
+  const useTyped  = typedMode && isJpFront;
+
+  // Auto-focus input when card changes in typed mode
+  useEffect(() => {
+    if (useTyped && !revealed) {
+      setTimeout(() => inputRef.current?.focus(), 50);
+    }
+  }, [card?.cardKey, useTyped, revealed]);
 
   const handleRate = useCallback((rating: Rating) => {
     if (done) return;
@@ -42,6 +76,8 @@ export default function StudySession({ queue, onRate, onUndo, onComplete, onBack
     const newRatings = { ...ratings, [rating]: ratings[rating] + 1 };
     setUndoStack(s => [...s, { card, prevState: prev, rating }]);
     setRatings(newRatings);
+    setTypedAnswer('');
+    setAnswerResult(null);
 
     if (rating === 'again') {
       setLocalQueue(q => [...q, card]);
@@ -70,7 +106,18 @@ export default function StudySession({ queue, onRate, onUndo, onComplete, onBack
     setDone(false);
     setIndex(i => Math.max(0, i - 1));
     setRevealed(false);
+    setTypedAnswer('');
+    setAnswerResult(null);
   }, [canUndo, undoStack, onUndo]);
+
+  const handleTypedSubmit = useCallback(() => {
+    if (revealed) return;
+    const result = typedAnswer.trim()
+      ? checkAnswer(typedAnswer, card.back.primary)
+      : null; // empty submit = give up, no result shown
+    setAnswerResult(result);
+    setRevealed(true);
+  }, [typedAnswer, revealed, card?.back.primary]);
 
   // Keyboard shortcuts
   useEffect(() => {
@@ -78,7 +125,7 @@ export default function StudySession({ queue, onRate, onUndo, onComplete, onBack
       if (e.target instanceof HTMLInputElement || e.target instanceof HTMLTextAreaElement) return;
       if (e.key === ' ' || e.key === 'Enter') {
         e.preventDefault();
-        if (!revealed && !done) setRevealed(true);
+        if (!revealed && !done && !useTyped) setRevealed(true);
       } else if (revealed && !done) {
         if (e.key === '1') handleRate('again');
         else if (e.key === '2') handleRate('hard');
@@ -92,7 +139,7 @@ export default function StudySession({ queue, onRate, onUndo, onComplete, onBack
     };
     window.addEventListener('keydown', handler);
     return () => window.removeEventListener('keydown', handler);
-  }, [revealed, done, handleRate, handleUndo]);
+  }, [revealed, done, useTyped, handleRate, handleUndo]);
 
   // ── Done screen ──────────────────────────────────────────────────────────────
   if (done) {
@@ -109,7 +156,6 @@ export default function StudySession({ queue, onRate, onUndo, onComplete, onBack
         transition={{ duration: 0.4 }}
         className="flex flex-col items-center gap-6 py-8 text-center"
       >
-        {/* Check icon with spring bounce */}
         <motion.div
           initial={{ scale: 0.4, opacity: 0 }}
           animate={{ scale: 1, opacity: 1 }}
@@ -127,7 +173,6 @@ export default function StudySession({ queue, onRate, onUndo, onComplete, onBack
           </p>
         </motion.div>
 
-        {/* Accuracy */}
         <motion.div
           initial={{ opacity: 0, scale: 0.95 }}
           animate={{ opacity: 1, scale: 1 }}
@@ -144,7 +189,6 @@ export default function StudySession({ queue, onRate, onUndo, onComplete, onBack
               {accuracy}%
             </span>
           </div>
-          {/* Breakdown bar */}
           <div className="flex h-2 rounded-full overflow-hidden gap-px">
             {RATING_META.map(r => ratings[r.value] > 0 && (
               <motion.div
@@ -157,7 +201,6 @@ export default function StudySession({ queue, onRate, onUndo, onComplete, onBack
               />
             ))}
           </div>
-          {/* Rating counts */}
           <div className="grid grid-cols-4 gap-2 mt-4">
             {RATING_META.map(r => (
               <div key={r.value} className="flex flex-col items-center gap-0.5">
@@ -238,7 +281,7 @@ export default function StudySession({ queue, onRate, onUndo, onComplete, onBack
         </span>
       </div>
 
-      {/* Card — key only changes on card transition, not on reveal */}
+      {/* Card */}
       <AnimatePresence mode="wait">
         <motion.div
           key={`${card.cardKey}:${index}`}
@@ -246,7 +289,11 @@ export default function StudySession({ queue, onRate, onUndo, onComplete, onBack
           animate={{ opacity: 1, x: 0 }}
           exit={{ opacity: 0, x: -24 }}
           transition={{ duration: 0.18, ease: 'easeOut' }}
-          onClick={() => !revealed && setRevealed(true)}
+          onClick={() => {
+            if (revealed) return;
+            if (useTyped) { handleTypedSubmit(); } // click = give up, reveal immediately
+            else setRevealed(true);
+          }}
           className="rounded-2xl p-8 flex flex-col items-center text-center min-h-[220px] justify-center select-none"
           style={{
             background: 'var(--surface)',
@@ -268,7 +315,7 @@ export default function StudySession({ queue, onRate, onUndo, onComplete, onBack
             </span>
           )}
 
-          {/* Back — animates in within the same card; no card-level transition */}
+          {/* Back — animates in on reveal */}
           <AnimatePresence>
             {revealed && (
               <motion.div
@@ -277,6 +324,21 @@ export default function StudySession({ queue, onRate, onUndo, onComplete, onBack
                 transition={{ duration: 0.2, ease: 'easeOut' }}
                 className="mt-5 w-full flex flex-col items-center gap-2"
               >
+                {/* Typed answer result indicator */}
+                {answerResult && (
+                  <div
+                    className="w-full max-w-sm px-3 py-2 rounded-xl text-xs font-medium text-center mb-1"
+                    style={{ background: RESULT_META[answerResult].bg, color: RESULT_META[answerResult].color, border: `1px solid ${RESULT_META[answerResult].color}30` }}
+                  >
+                    {RESULT_META[answerResult].label}
+                    {(answerResult === 'wrong' || answerResult === 'close') && typedAnswer.trim() && (
+                      <span style={{ color: 'rgba(255,255,255,0.4)', marginLeft: '0.5rem' }}>
+                        · you typed: "{typedAnswer.trim()}"
+                      </span>
+                    )}
+                  </div>
+                )}
+
                 <div className="w-10 h-px mb-1" style={{ background: 'var(--border)' }} />
                 <p className={`text-2xl font-semibold text-white ${!isJpFront ? 'jp' : ''}`}>
                   {card.back.primary}
@@ -303,11 +365,27 @@ export default function StudySession({ queue, onRate, onUndo, onComplete, onBack
                     <p className="text-xs" style={{ color: 'var(--muted)' }}>{card.back.example.en}</p>
                   </div>
                 )}
+
+                {/* Kanji breakdown */}
+                {card.back.breakdown && (
+                  <div className="mt-2 flex flex-wrap gap-2 justify-center">
+                    {card.back.breakdown.map(b => (
+                      <span
+                        key={b.char}
+                        className="flex items-center gap-1.5 px-2.5 py-1 rounded-lg text-xs"
+                        style={{ background: 'var(--faint)', border: '1px solid var(--border)' }}
+                      >
+                        <span className="jp font-bold text-white text-sm">{b.char}</span>
+                        <span style={{ color: 'var(--muted)' }}>{b.meanings.join(', ')}</span>
+                      </span>
+                    ))}
+                  </div>
+                )}
               </motion.div>
             )}
           </AnimatePresence>
 
-          {!revealed && (
+          {!revealed && !useTyped && (
             <p className="hidden sm:block text-[10px] mt-6 select-none" style={{ color: 'rgba(255,255,255,0.1)' }}>
               click · space · enter
             </p>
@@ -318,22 +396,53 @@ export default function StudySession({ queue, onRate, onUndo, onComplete, onBack
       {/* Action area */}
       <AnimatePresence mode="wait">
         {!revealed ? (
-          <motion.button
-            key="show"
-            initial={{ opacity: 0, y: 6 }}
-            animate={{ opacity: 1, y: 0 }}
-            exit={{ opacity: 0, y: -4 }}
-            transition={{ duration: 0.15 }}
-            onClick={() => setRevealed(true)}
-            className="cursor-pointer w-full py-3.5 rounded-xl text-sm font-medium transition-opacity hover:opacity-85"
-            style={{
-              background: 'var(--surface)',
-              border: '1px solid var(--border)',
-              color: 'var(--text)',
-            }}
-          >
-            Show answer
-          </motion.button>
+          useTyped ? (
+            /* Typed answer input */
+            <motion.div
+              key="typed"
+              initial={{ opacity: 0, y: 6 }}
+              animate={{ opacity: 1, y: 0 }}
+              exit={{ opacity: 0, y: -4 }}
+              transition={{ duration: 0.15 }}
+              className="flex gap-2"
+            >
+              <input
+                ref={inputRef}
+                type="text"
+                value={typedAnswer}
+                onChange={e => setTypedAnswer(e.target.value)}
+                onKeyDown={e => { if (e.key === 'Enter') handleTypedSubmit(); }}
+                placeholder="Type the meaning…"
+                className="flex-1 px-4 py-3.5 rounded-xl text-sm text-white outline-none"
+                style={{ background: 'var(--surface)', border: '1px solid var(--border)' }}
+              />
+              <button
+                onClick={handleTypedSubmit}
+                className="cursor-pointer px-5 rounded-xl text-sm font-medium transition-opacity hover:opacity-85"
+                style={{ background: 'var(--accent-dim)', color: 'var(--accent)', border: '1px solid rgba(230,57,70,0.25)' }}
+              >
+                Check
+              </button>
+            </motion.div>
+          ) : (
+            /* Normal show-answer button */
+            <motion.button
+              key="show"
+              initial={{ opacity: 0, y: 6 }}
+              animate={{ opacity: 1, y: 0 }}
+              exit={{ opacity: 0, y: -4 }}
+              transition={{ duration: 0.15 }}
+              onClick={() => setRevealed(true)}
+              className="cursor-pointer w-full py-3.5 rounded-xl text-sm font-medium transition-opacity hover:opacity-85"
+              style={{
+                background: 'var(--surface)',
+                border: '1px solid var(--border)',
+                color: 'var(--text)',
+              }}
+            >
+              Show answer
+            </motion.button>
+          )
         ) : (
           <motion.div
             key="rate"
@@ -366,7 +475,7 @@ export default function StudySession({ queue, onRate, onUndo, onComplete, onBack
 
       {/* Keyboard hint */}
       <p className="hidden sm:block text-center text-[10px]" style={{ color: 'rgba(255,255,255,0.1)' }}>
-        {revealed ? '1 again · 2 hard · 3 good · 4 easy · U undo' : 'space to reveal · U to undo'}
+        {revealed ? '1 again · 2 hard · 3 good · 4 easy · U undo' : useTyped ? 'enter to check · click card to skip' : 'space to reveal · U to undo'}
       </p>
     </div>
   );

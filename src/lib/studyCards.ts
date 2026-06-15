@@ -3,7 +3,7 @@ import { grammarPoints } from '../data/grammar';
 import { particles } from '../data/particles';
 import { cltCards } from '../data/clt';
 import { kanaEntries } from '../data/kana';
-import { kanjiEntries } from '../data/kanji';
+import { kanjiEntries, type KanjiEntry } from '../data/kanji';
 import type { StudyCard } from './srs';
 
 const typeLabels: Record<Word['type'], string> = {
@@ -12,23 +12,37 @@ const typeLabels: Record<Word['type'], string> = {
   adverb: 'adv', expression: 'expr',
 };
 
+const kanjiMap = new Map<string, KanjiEntry>(kanjiEntries.map(k => [k.kanji, k]));
+
+function getBreakdown(text: string): { char: string; meanings: string[] }[] | undefined {
+  const found = [...text]
+    .filter(c => { const cp = c.codePointAt(0)!; return cp >= 0x4E00 && cp <= 0x9FFF; })
+    .map(c => kanjiMap.get(c))
+    .filter((e): e is KanjiEntry => e !== undefined)
+    .map(e => ({ char: e.kanji, meanings: e.meanings.slice(0, 2) }));
+  return found.length >= 2 ? found : undefined;
+}
+
 export function buildVocabCards(): StudyCard[] {
-  return vocabulary.flatMap(w => [
-    {
-      cardKey: `v:${w.id}:j`,
-      deckId: 'vocabulary',
-      direction: 'jp-en' as const,
-      front: { primary: w.kanji, secondary: w.kana, tag: typeLabels[w.type] },
-      back: { primary: w.meaning, secondary: w.romaji, example: w.example },
-    },
-    {
-      cardKey: `v:${w.id}:e`,
-      deckId: 'vocabulary',
-      direction: 'en-jp' as const,
-      front: { primary: w.meaning, tag: typeLabels[w.type] },
-      back: { primary: w.kanji, secondary: `${w.kana} · ${w.romaji}`, example: w.example },
-    },
-  ]);
+  return vocabulary.flatMap(w => {
+    const breakdown = getBreakdown(w.kanji);
+    return [
+      {
+        cardKey: `v:${w.id}:j`,
+        deckId: 'vocabulary',
+        direction: 'jp-en' as const,
+        front: { primary: w.kanji, secondary: w.kana, tag: typeLabels[w.type] },
+        back: { primary: w.meaning, secondary: w.romaji, example: w.example, breakdown },
+      },
+      {
+        cardKey: `v:${w.id}:e`,
+        deckId: 'vocabulary',
+        direction: 'en-jp' as const,
+        front: { primary: w.meaning, tag: typeLabels[w.type] },
+        back: { primary: w.kanji, secondary: `${w.kana} · ${w.romaji}`, example: w.example, breakdown },
+      },
+    ];
+  });
 }
 
 export function buildGrammarCards(): StudyCard[] {
