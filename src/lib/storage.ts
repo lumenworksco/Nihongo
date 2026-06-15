@@ -180,3 +180,13 @@ export function resetDeck(deckId: string): void {
   localStorage.removeItem(DECK_KEY(deckId));
   localStorage.removeItem(DECK_KEY_V2(deckId)); // clean up legacy key if present
 }
+
+// Clear all user progress data (called on sign-out). Settings are preserved.
+export function clearUserData(): void {
+  const toRemove: string[] = [];
+  for (let i = 0; i < localStorage.length; i++) {
+    const k = localStorage.key(i);
+    if (k?.startsWith('nihongo_') && k !== SETTINGS_KEY) toRemove.push(k);
+  }
+  toRemove.forEach(k => localStorage.removeItem(k));
+}

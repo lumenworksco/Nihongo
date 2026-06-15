@@ -1,6 +1,7 @@
 import { createContext, useContext, useEffect, useState, type ReactNode } from 'react';
 import type { User, Session } from '@supabase/supabase-js';
 import { supabase } from '../lib/supabase';
+import { clearUserData } from '../lib/storage';
 
 interface AuthContextValue {
   user: User | null;
@@ -63,7 +64,9 @@ export function AuthProvider({ children }: { children: ReactNode }) {
 
   const signOut = async (): Promise<void> => {
     if (!supabase) return;
+    clearUserData();
     await supabase.auth.signOut();
+    window.location.assign('/');
   };
 
   const resetPassword = async (email: string): Promise<{ error: string | null }> => {
