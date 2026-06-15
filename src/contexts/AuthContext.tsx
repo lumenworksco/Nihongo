@@ -79,7 +79,9 @@ export function AuthProvider({ children }: { children: ReactNode }) {
     if (!supabase) return;
     clearUserData();
     await supabase.auth.signOut();
-    window.location.assign('/');
+    // reload() guarantees a full page reset regardless of current URL.
+    // assign('/') silently no-ops when already at '/', leaving stale React state alive.
+    window.location.reload();
   };
 
   const resetPassword = async (email: string): Promise<{ error: string | null }> => {
