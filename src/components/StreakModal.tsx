@@ -23,6 +23,7 @@ function GoalMetModal({ event, onClose }: { event: Extract<StreakEvent, { type: 
       initial={{ opacity: 0 }}
       animate={{ opacity: 1 }}
       exit={{ opacity: 0 }}
+      onClick={onClose}
       style={{ background: 'rgba(0,0,0,0.75)', backdropFilter: 'blur(4px)' }}
     >
       <motion.div
@@ -126,6 +127,7 @@ function MilestoneModal({ event, onClose }: { event: Extract<StreakEvent, { type
       initial={{ opacity: 0 }}
       animate={{ opacity: 1 }}
       exit={{ opacity: 0 }}
+      onClick={onClose}
       style={{ background: 'rgba(0,0,0,0.8)', backdropFilter: 'blur(4px)' }}
     >
       <motion.div
@@ -215,6 +217,7 @@ function StreakFrozenModal({ event, onClose }: { event: Extract<StreakEvent, { t
       initial={{ opacity: 0 }}
       animate={{ opacity: 1 }}
       exit={{ opacity: 0 }}
+      onClick={onClose}
       style={{ background: 'rgba(0,0,0,0.8)', backdropFilter: 'blur(4px)' }}
     >
       <motion.div
@@ -325,6 +328,7 @@ function StreakBrokenModal({ event, onClose }: { event: Extract<StreakEvent, { t
       initial={{ opacity: 0 }}
       animate={{ opacity: 1 }}
       exit={{ opacity: 0 }}
+      onClick={onClose}
       style={{ background: 'rgba(0,0,0,0.8)', backdropFilter: 'blur(4px)' }}
     >
       <motion.div
@@ -419,11 +423,15 @@ function StreakBrokenModal({ event, onClose }: { event: Extract<StreakEvent, { t
 }
 
 export default function StreakModal({ event, onClose }: Props) {
-  // Close on Escape
   useEffect(() => {
+    const prev = document.body.style.overflow;
+    document.body.style.overflow = 'hidden';
     const handler = (e: KeyboardEvent) => { if (e.key === 'Escape') onClose(); };
     window.addEventListener('keydown', handler);
-    return () => window.removeEventListener('keydown', handler);
+    return () => {
+      document.body.style.overflow = prev;
+      window.removeEventListener('keydown', handler);
+    };
   }, [onClose]);
 
   return (

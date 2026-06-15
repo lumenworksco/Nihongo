@@ -63,26 +63,32 @@ export default function Stats() {
 
   // ── 35-day heatmap (5 weeks × 7 cols, Mon–Sun) ───────────────────────────────
   const heatmap = useMemo(() => {
-    // Build per-day review counts
     const byDate: Record<string, number> = {};
-    for (const r of history) {
-      byDate[r.date] = (byDate[r.date] ?? 0) + r.reviewed;
-    }
-    // Generate last 35 days ending today, aligned so the last column is today's week
+    for (const r of history) byDate[r.date] = (byDate[r.date] ?? 0) + r.reviewed;
+
     const today = new Date();
-    // Sunday of this week = today - today.getDay(); shift so week starts Monday
-    const endSun = new Date(today);
-    endSun.setDate(today.getDate() + ((7 - today.getDay()) % 7)); // next or current Sunday
-    // But we want the last complete 5-week span ending on the current day's week
-    // Simpler: build 35 days ago → today, then lay them out in (dayOfWeek, weekIndex) order
-    const days: { date: string; count: number }[] = [];
-    for (let i = 34; i >= 0; i--) {
-      const d = new Date(today);
-      d.setDate(today.getDate() - i);
+    today.setHours(23, 59, 59, 999);
+
+    // Monday of this week (Mon=0 in our scheme)
+    const todayDow = (new Date().getDay() + 6) % 7; // Mon=0..Sun=6
+    const thisMonday = new Date();
+    thisMonday.setDate(new Date().getDate() - todayDow);
+    thisMonday.setHours(0, 0, 0, 0);
+
+    // Monday 4 weeks before this Monday
+    const start = new Date(thisMonday);
+    start.setDate(thisMonday.getDate() - 28);
+
+    // 35 cells: column = i%7 is always the correct weekday (0=Mon,6=Sun)
+    const days: { date: string; count: number; isFuture: boolean }[] = [];
+    for (let i = 0; i < 35; i++) {
+      const d = new Date(start);
+      d.setDate(start.getDate() + i);
+      d.setHours(12, 0, 0, 0);
       const dateStr = d.toISOString().slice(0, 10);
-      days.push({ date: dateStr, count: byDate[dateStr] ?? 0 });
+      days.push({ date: dateStr, count: byDate[dateStr] ?? 0, isFuture: d > today });
     }
-    const maxCount = Math.max(...days.map(d => d.count), 1);
+    const maxCount = Math.max(...days.filter(d => !d.isFuture).map(d => d.count), 1);
     return { days, maxCount };
   }, [history]);
 
@@ -203,15 +209,14 @@ export default function Stats() {
           {Array.from({ length: 5 }).map((_, week) => (
             <div key={week} className="flex gap-1">
               {Array.from({ length: 7 }).map((_, dow) => {
-                const idx = week * 7 + dow;
-                const cell = heatmap.days[idx];
+                const cell = heatmap.days[week * 7 + dow];
                 if (!cell) return <div key={dow} className="flex-1 h-5 rounded-sm" style={{ background: 'transparent' }} />;
                 return (
                   <div
                     key={dow}
                     className="flex-1 h-5 rounded-sm"
-                    title={`${cell.date}: ${cell.count} cards`}
-                    style={{ background: heatCellColor(cell.count, heatmap.maxCount) }}
+                    title={cell.isFuture ? undefined : `${cell.date}: ${cell.count} cards`}
+                    style={{ background: cell.isFuture ? 'transparent' : heatCellColor(cell.count, heatmap.maxCount) }}
                   />
                 );
               })}
