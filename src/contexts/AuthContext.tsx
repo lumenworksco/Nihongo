@@ -1,4 +1,4 @@
-import { createContext, useContext, useEffect, useState, type ReactNode } from 'react';
+import { createContext, useContext, useEffect, useLayoutEffect, useState, type ReactNode } from 'react';
 import type { User, Session } from '@supabase/supabase-js';
 import { supabase } from '../lib/supabase';
 import { clearUserData } from '../lib/storage';
@@ -33,23 +33,12 @@ export function AuthProvider({ children }: { children: ReactNode }) {
   const [loading, setLoading]       = useState(true);
   const [recoveryMode, setRecoveryMode] = useState(isRecoveryUrl);
 
-  useEffect(() => {
-    if (!supabase) {
-      setLoading(false);
-      return;
-    }
+  // useLayoutEffect fires synchronously after DOM commit, BEFORE browser microtasks
+  // run. Supabase exchanges the PKCE ?code= in a microtask, so registering here
+  // guarantees the listener is active before PASSWORD_RECOVERY fires.
+  useLayoutEffect(() => {
+    if (!supabase) return;
 
-    // Initial session
-    supabase.auth.getSession().then(({ data }) => {
-      setSession(data.session);
-      setUser(data.session?.user ?? null);
-      setLoading(false);
-    });
-
-    // Listen for auth changes.
-    // Only SIGNED_OUT explicitly clears recovery mode; other events (INITIAL_SESSION,
-    // SIGNED_IN) must not clear it because in PKCE flow INITIAL_SESSION fires instead
-    // of PASSWORD_RECOVERY when the code is exchanged before our listener registers.
     const { data: { subscription } } = supabase.auth.onAuthStateChange((event, session) => {
       if (event === 'PASSWORD_RECOVERY') {
         setRecoveryMode(true);
@@ -61,6 +50,19 @@ export function AuthProvider({ children }: { children: ReactNode }) {
     });
 
     return () => subscription.unsubscribe();
+  }, []);
+
+  // Separate useEffect for the initial session bootstrap (sets loading=false).
+  useEffect(() => {
+    if (!supabase) {
+      setLoading(false);
+      return;
+    }
+    supabase.auth.getSession().then(({ data }) => {
+      setSession(data.session);
+      setUser(data.session?.user ?? null);
+      setLoading(false);
+    });
   }, []);
 
   const signUp = async (email: string, password: string): Promise<{ error: string | null }> => {
