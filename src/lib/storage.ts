@@ -182,14 +182,14 @@ export function resetDeck(deckId: string): void {
 }
 
 // Clear all user progress data (called on sign-out). Settings are preserved.
-// Clears ALL localStorage keys except nihongo_settings so that Supabase auth
-// tokens are also wiped — preventing pullUserData from re-running if signOut
-// doesn't fully clear its token before the page reloads.
+// Only clears nihongo_* keys; Supabase clears its own auth tokens (including
+// PKCE code_verifier) via supabase.auth.signOut(). Clearing sb-* keys ourselves
+// would wipe any pending code_verifier needed for a concurrent password-reset flow.
 export function clearUserData(): void {
   const toRemove: string[] = [];
   for (let i = 0; i < localStorage.length; i++) {
     const k = localStorage.key(i);
-    if (k && k !== SETTINGS_KEY) toRemove.push(k);
+    if (k && k.startsWith('nihongo_') && k !== SETTINGS_KEY) toRemove.push(k);
   }
   toRemove.forEach(k => localStorage.removeItem(k));
 }

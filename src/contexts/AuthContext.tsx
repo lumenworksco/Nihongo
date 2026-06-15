@@ -17,14 +17,13 @@ interface AuthContextValue {
 
 const AuthContext = createContext<AuthContextValue | null>(null);
 
-// Detect recovery mode synchronously from URL before any async auth events.
-// Supabase PKCE flow exchanges the ?code= before our onAuthStateChange listener
-// is registered, so PASSWORD_RECOVERY fires into a void. We need the URL-based
-// check so the flag is correct by the time the first render completes.
+// Detect implicit-flow recovery from the URL hash (#type=recovery).
+// PKCE flow is handled entirely by the PASSWORD_RECOVERY event in the
+// useLayoutEffect listener — no URL sniffing needed there, and adding
+// ?type=recovery to the redirectTo caused code-exchange failures.
 function isRecoveryUrl(): boolean {
-  const params = new URLSearchParams(window.location.search);
-  const hash   = new URLSearchParams(window.location.hash.replace('#', ''));
-  return params.get('type') === 'recovery' || hash.get('type') === 'recovery';
+  const hash = new URLSearchParams(window.location.hash.replace('#', ''));
+  return hash.get('type') === 'recovery';
 }
 
 export function AuthProvider({ children }: { children: ReactNode }) {
@@ -89,7 +88,7 @@ export function AuthProvider({ children }: { children: ReactNode }) {
   const resetPassword = async (email: string): Promise<{ error: string | null }> => {
     if (!supabase) return { error: 'Supabase is not configured.' };
     const { error } = await supabase.auth.resetPasswordForEmail(email, {
-      redirectTo: `${window.location.origin}/auth?type=recovery`,
+      redirectTo: `${window.location.origin}/auth`,
     });
     return { error: error?.message ?? null };
   };
