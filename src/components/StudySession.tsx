@@ -49,6 +49,7 @@ export default function StudySession({ queue, onRate, onUndo, onComplete, onBack
   const [revealed, setRevealed]     = useState(false);
   const [undoStack, setUndoStack]   = useState<UndoEntry[]>([]);
   const [ratings, setRatings]       = useState<Record<Rating, number>>({ again: 0, hard: 0, good: 0, easy: 0 });
+  const [missedCards, setMissedCards] = useState<StudyCard[]>([]);
   const [done, setDone]             = useState(false);
   const [typedAnswer, setTypedAnswer]       = useState('');
   const [answerResult, setAnswerResult]     = useState<AnswerResult | null>(null);
@@ -80,6 +81,7 @@ export default function StudySession({ queue, onRate, onUndo, onComplete, onBack
     setAnswerResult(null);
 
     if (rating === 'again') {
+      setMissedCards(m => m.some(c => c.cardKey === card.cardKey) ? m : [...m, card]);
       setLocalQueue(q => [...q, card]);
       setRevealed(false);
       setIndex(i => i + 1);
@@ -211,10 +213,65 @@ export default function StudySession({ queue, onRate, onUndo, onComplete, onBack
           </div>
         </motion.div>
 
+        {/* Missed-card recap */}
+        {missedCards.length > 0 && (
+          <motion.div
+            initial={{ opacity: 0, scale: 0.95 }}
+            animate={{ opacity: 1, scale: 1 }}
+            transition={{ delay: 0.38 }}
+            className="w-full max-w-xs rounded-2xl overflow-hidden"
+            style={{ background: 'var(--surface)', border: '1px solid rgba(239,68,68,0.2)' }}
+          >
+            <div
+              className="px-4 py-2.5 flex items-center justify-between"
+              style={{ borderBottom: '1px solid var(--border)' }}
+            >
+              <span className="text-[10px] font-mono uppercase tracking-widest" style={{ color: '#ef4444' }}>
+                Missed
+              </span>
+              <span className="text-xs font-mono font-bold" style={{ color: '#ef4444' }}>
+                {missedCards.length}
+              </span>
+            </div>
+            {missedCards.slice(0, 5).map((c, i) => {
+              const jpText = c.direction === 'jp-en' ? c.front.primary : c.back.primary;
+              const enText = c.direction === 'jp-en' ? c.back.primary : c.front.primary;
+              const hint   = c.direction === 'jp-en' ? c.front.secondary : undefined;
+              return (
+                <div
+                  key={c.cardKey}
+                  className="flex items-center justify-between gap-3 px-4 py-2.5"
+                  style={{ borderTop: i > 0 ? '1px solid var(--border)' : undefined }}
+                >
+                  <div className="flex flex-col min-w-0">
+                    <span className="jp font-bold text-white text-base leading-tight truncate">{jpText}</span>
+                    {hint && (
+                      <span className="text-[10px] font-mono mt-0.5" style={{ color: 'rgba(255,255,255,0.3)' }}>
+                        {hint}
+                      </span>
+                    )}
+                  </div>
+                  <span className="text-xs text-right leading-tight shrink-0 max-w-[140px]" style={{ color: 'var(--muted)' }}>
+                    {enText}
+                  </span>
+                </div>
+              );
+            })}
+            {missedCards.length > 5 && (
+              <div
+                className="px-4 py-2 text-center text-xs"
+                style={{ borderTop: '1px solid var(--border)', color: 'var(--muted)' }}
+              >
+                + {missedCards.length - 5} more
+              </div>
+            )}
+          </motion.div>
+        )}
+
         <motion.div
           initial={{ opacity: 0, y: 6 }}
           animate={{ opacity: 1, y: 0 }}
-          transition={{ delay: 0.42 }}
+          transition={{ delay: 0.46 }}
           className="flex gap-3"
         >
           {canUndo && (
