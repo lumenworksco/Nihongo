@@ -830,6 +830,17 @@ export const vocabulary: Word[] = [
   { id: 720, kanji: 'できるだけ', kana: 'できるだけ', romaji: 'dekiru dake', meaning: 'as much as possible', type: 'expression', category: 'expressions', example: { jp: 'できるだけ早く来てください。', en: 'Please come as soon as possible.' } },
 ];
 
+export const typeColors: Record<Word['type'], string> = {
+  noun: '#60a5fa', verb: '#4ade80',
+  'adjective-i': '#f59e0b', 'adjective-na': '#f59e0b',
+  adverb: '#a78bfa', expression: '#f472b6',
+};
+
+export const typeLabels: Record<Word['type'], string> = {
+  noun: 'n', verb: 'v', 'adjective-i': 'い-adj',
+  'adjective-na': 'な-adj', adverb: 'adv', expression: 'expr',
+};
+
 export const categories = [
   { id: 'all',         label: 'All' },
   { id: 'people',      label: 'People & Family' },

@@ -175,6 +175,26 @@ export function persistSuspended(suspended: Set<string>): void {
   localStorage.setItem(SUSPENDED_KEY, JSON.stringify([...suspended]));
 }
 
+// ── Vocabulary reading pins ────────────────────────────────────────────────────
+const VOCAB_PINS_KEY = 'nihongo_vocab_pins';
+
+export function loadVocabPins(): Set<number> {
+  try { return new Set<number>(JSON.parse(localStorage.getItem(VOCAB_PINS_KEY) ?? '[]')); }
+  catch { return new Set<number>(); }
+}
+
+export function pinVocabWord(id: number): void {
+  const pins = loadVocabPins();
+  pins.add(id);
+  localStorage.setItem(VOCAB_PINS_KEY, JSON.stringify([...pins]));
+}
+
+export function unpinVocabWord(id: number): void {
+  const pins = loadVocabPins();
+  pins.delete(id);
+  localStorage.setItem(VOCAB_PINS_KEY, JSON.stringify([...pins]));
+}
+
 // Reset a deck completely
 export function resetDeck(deckId: string): void {
   localStorage.removeItem(DECK_KEY(deckId));

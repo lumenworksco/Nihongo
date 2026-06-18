@@ -1,7 +1,11 @@
-import { useState, useEffect } from 'react';
+import { useState, useMemo, Fragment } from 'react';
 import { motion, AnimatePresence } from 'framer-motion';
 import { BookOpenText, ChevronLeft, CheckCircle2, XCircle, RotateCcw } from 'lucide-react';
 import { passages, TYPE_LABELS, type ReadingPassage } from '../data/reading';
+import type { Word } from '../data/vocabulary';
+import { tokenize } from '../lib/tokenizer';
+import { loadDeckStates, loadVocabPins, pinVocabWord, unpinVocabWord } from '../lib/storage';
+import WordPopup from '../components/WordPopup';
 
 const ACCENT = '#10b981';
 const STORAGE_KEY = 'nihongo_reading_progress';
@@ -87,8 +91,13 @@ function PassageView({ passage, onBack }: { passage: ReadingPassage; onBack: (sc
     Array(passage.questions.length).fill(false),
   );
   const [showResults, setShowResults] = useState(false);
+  const [selectedWord, setSelectedWord] = useState<Word | null>(null);
+  const [pins, setPins] = useState(() => loadVocabPins());
 
   const color = TYPE_COLORS[passage.type];
+
+  const vocabStates = useMemo(() => loadDeckStates('vocabulary'), []);
+  const tokens = useMemo(() => tokenize(passage.text), [passage.text]);
 
   const handleAnswer = (qIdx: number, optIdx: number) => {
     if (revealed[qIdx]) return;
@@ -107,6 +116,16 @@ function PassageView({ passage, onBack }: { passage: ReadingPassage; onBack: (sc
     setAnswers(Array(passage.questions.length).fill(null));
     setRevealed(Array(passage.questions.length).fill(false));
     setShowResults(false);
+  };
+
+  const handlePin = (word: Word) => {
+    pinVocabWord(word.id);
+    setPins(p => new Set([...p, word.id]));
+  };
+
+  const handleUnpin = (word: Word) => {
+    unpinVocabWord(word.id);
+    setPins(p => { const n = new Set(p); n.delete(word.id); return n; });
   };
 
   return (
@@ -138,12 +157,37 @@ function PassageView({ passage, onBack }: { passage: ReadingPassage; onBack: (sc
         className="rounded-2xl p-6 mb-8"
         style={{ background: 'var(--surface)', border: `1px solid ${color}30` }}
       >
-        <p className="text-[10px] font-mono uppercase tracking-widest mb-4" style={{ color }}>
-          本文
-        </p>
-        <p className="jp text-base leading-loose whitespace-pre-line text-white">
-          {passage.text}
-        </p>
+        <div className="flex items-center justify-between mb-4">
+          <p className="text-[10px] font-mono uppercase tracking-widest" style={{ color }}>
+            本文
+          </p>
+          <p className="text-[10px] font-mono" style={{ color: 'rgba(255,255,255,0.2)' }}>
+            tap words to look up
+          </p>
+        </div>
+        <div className="jp text-base leading-loose text-white">
+          {tokens.map((token, ti) => {
+            if (token.type === 'word') {
+              return (
+                <button
+                  key={ti}
+                  onClick={() => setSelectedWord(token.word)}
+                  className="underline decoration-dotted underline-offset-2 transition-opacity hover:opacity-75 active:opacity-50"
+                  style={{ textDecorationColor: 'rgba(16,185,129,0.45)', cursor: 'pointer' }}
+                >
+                  {token.word.kanji}
+                </button>
+              );
+            }
+            const parts = token.text.split('\n');
+            return parts.map((part, pi) => (
+              <Fragment key={`${ti}-${pi}`}>
+                {pi > 0 && <br />}
+                {part}
+              </Fragment>
+            ));
+          })}
+        </div>
       </div>
 
       {/* Results banner */}
@@ -272,6 +316,21 @@ function PassageView({ passage, onBack }: { passage: ReadingPassage; onBack: (sc
           </button>
         </motion.div>
       )}
+
+      {/* Word popup */}
+      <AnimatePresence>
+        {selectedWord && (
+          <WordPopup
+            key={selectedWord.id}
+            word={selectedWord}
+            state={vocabStates[`v:${selectedWord.id}:j`]}
+            isPinned={pins.has(selectedWord.id)}
+            onPin={() => handlePin(selectedWord)}
+            onUnpin={() => handleUnpin(selectedWord)}
+            onClose={() => setSelectedWord(null)}
+          />
+        )}
+      </AnimatePresence>
     </div>
   );
 }
@@ -280,16 +339,13 @@ export default function Reading() {
   const [progress, setProgress] = useState<Progress>(loadProgress);
   const [active, setActive] = useState<ReadingPassage | null>(null);
 
-  useEffect(() => {
-    if (active) window.scrollTo(0, 0);
-  }, [active]);
-
   const handleBack = (score: PassageScore) => {
     if (!active) return;
     const updated = { ...progress, [active.id]: score };
     setProgress(updated);
     saveProgress(updated);
     setActive(null);
+    window.scrollTo(0, 0);
   };
 
   const done = Object.keys(progress).length;
@@ -349,7 +405,10 @@ export default function Reading() {
             animate={{ opacity: 1, y: 0 }}
             transition={{ delay: i * 0.04 }}
           >
-            <PassageCard passage={p} score={progress[p.id]} onClick={() => setActive(p)} />
+            <PassageCard passage={p} score={progress[p.id]} onClick={() => {
+              setActive(p);
+              window.scrollTo(0, 0);
+            }} />
           </motion.div>
         ))}
       </div>

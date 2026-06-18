@@ -11,6 +11,7 @@ export function useDeck(
   allCards: StudyCard[],
   bidirectional: boolean,
   maxNew: number = 10,
+  priorityCardKeys?: Set<string>,
 ) {
   const { user } = useAuth();
 
@@ -26,9 +27,14 @@ export function useDeck(
 
   const studyQueue = useMemo(() => {
     const due   = activeCards.filter(c => { const s = states[c.cardKey]; return s && isDue(s); });
-    const fresh = activeCards.filter(c => !states[c.cardKey]).slice(0, maxNew);
-    return [...due, ...fresh];
-  }, [activeCards, states, maxNew]);
+    const fresh = activeCards.filter(c => !states[c.cardKey]);
+    if (priorityCardKeys?.size) {
+      const priority = fresh.filter(c => priorityCardKeys.has(c.cardKey));
+      const normal   = fresh.filter(c => !priorityCardKeys.has(c.cardKey));
+      return [...due, ...[...priority, ...normal].slice(0, maxNew)];
+    }
+    return [...due, ...fresh.slice(0, maxNew)];
+  }, [activeCards, states, maxNew, priorityCardKeys]);
 
   const stats = useMemo<DeckStats>(() => {
     const counts: DeckStats = { new: 0, learning: 0, review: 0, scheduled: 0, known: 0 };

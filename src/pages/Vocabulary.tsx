@@ -1,25 +1,16 @@
 import { useState, useMemo } from 'react';
 import { motion, AnimatePresence } from 'framer-motion';
-import { Search, RotateCcw, ChevronLeft, ChevronRight, BookOpen, Grid, GraduationCap, ArrowLeftRight, ChevronDown, EyeOff, Eye, Keyboard } from 'lucide-react';
-import { vocabulary, categories, type Word } from '../data/vocabulary';
+import { Search, RotateCcw, ChevronLeft, ChevronRight, BookOpen, Grid, GraduationCap, ArrowLeftRight, ChevronDown, EyeOff, Eye, Keyboard, BookmarkCheck } from 'lucide-react';
+import { vocabulary, categories, typeColors, typeLabels, type Word } from '../data/vocabulary';
 import { useDeck } from '../hooks/useDeck';
 import { useProgress } from '../hooks/useProgress';
 import { buildVocabCards } from '../lib/studyCards';
 import { getStatus, statusMeta, formatDue, formatInterval, type CardStatus, type CardState } from '../lib/srs';
-import { loadSettings } from '../lib/storage';
+import { loadSettings, loadVocabPins } from '../lib/storage';
 import StudySession from '../components/StudySession';
 
 const vocabCards = buildVocabCards();
 
-const typeColors: Record<Word['type'], string> = {
-  noun: '#60a5fa', verb: '#4ade80',
-  'adjective-i': '#f59e0b', 'adjective-na': '#f59e0b',
-  adverb: '#a78bfa', expression: '#f472b6',
-};
-const typeLabels: Record<Word['type'], string> = {
-  noun: 'n', verb: 'v', 'adjective-i': 'い-adj',
-  'adjective-na': 'な-adj', adverb: 'adv', expression: 'expr',
-};
 
 function WordCard({ word, state, isSuspended, onToggleSuspend }: {
   word: Word;
@@ -189,8 +180,13 @@ type Mode = 'browse' | 'flashcard' | 'study';
 export default function Vocabulary() {
   const maxNew = useMemo(() => loadSettings().maxNewCards, []);
   const [bidirectional, setBidirectional] = useState(false);
+  const [pins] = useState(() => loadVocabPins());
+  const priorityCardKeys = useMemo(
+    () => new Set([...pins].map(id => `v:${id}:j`)),
+    [pins],
+  );
   const { states, rate, undoCard, studyQueue, stats, suspended, toggleSuspend } =
-    useDeck('vocabulary', vocabCards, bidirectional, maxNew);
+    useDeck('vocabulary', vocabCards, bidirectional, maxNew, priorityCardKeys);
   const { recordSession } = useProgress();
 
   const [search, setSearch]             = useState('');
@@ -285,6 +281,19 @@ export default function Vocabulary() {
               Bidirectional
             </button>
           </div>
+
+          {frozenQueue.length > 0 && (() => {
+            const freshPinCount = [...pins].filter(id => !states[`v:${id}:j`]).length;
+            return freshPinCount > 0 ? (
+              <div
+                className="mb-4 px-4 py-3 rounded-xl text-sm flex items-center gap-2"
+                style={{ background: 'rgba(16,185,129,0.08)', border: '1px solid rgba(16,185,129,0.2)', color: '#10b981' }}
+              >
+                <BookmarkCheck size={13} className="shrink-0" />
+                {freshPinCount} {freshPinCount === 1 ? 'word' : 'words'} saved from reading {freshPinCount === 1 ? 'is' : 'are'} prioritized in this session
+              </div>
+            ) : null;
+          })()}
 
           {frozenQueue.length === 0 ? (
             <div className="flex flex-col items-center gap-4 py-16 text-center">
