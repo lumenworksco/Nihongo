@@ -1,6 +1,6 @@
 import { useState, useMemo } from 'react';
 import { motion, AnimatePresence } from 'framer-motion';
-import { ChevronDown, GraduationCap, ArrowLeftRight, EyeOff, Eye } from 'lucide-react';
+import { ChevronDown, GraduationCap, ArrowLeftRight, EyeOff, Eye, Keyboard } from 'lucide-react';
 import { particles, type Particle } from '../data/particles';
 import { useDeck } from '../hooks/useDeck';
 import { useProgress } from '../hooks/useProgress';
@@ -137,6 +137,7 @@ export default function Particles() {
   const maxNew = useMemo(() => loadSettings().maxNewCards, []);
   const [mode, setMode]                   = useState<Mode>('browse');
   const [bidirectional, setBidirectional] = useState(false);
+  const [typedMode, setTypedMode]         = useState(false);
   const [frozenQueue, setFrozenQueue]     = useState<StudyCard[]>([]);
   const { states, rate, undoCard, studyQueue, suspended, toggleSuspend } =
     useDeck('particles', particleCards, bidirectional, maxNew);
@@ -163,18 +164,32 @@ export default function Particles() {
         </div>
         <div className="flex items-center gap-2">
           {mode === 'study' && (
-            <button
-              onClick={() => setBidirectional(b => !b)}
-              className="flex items-center gap-1.5 px-3 py-1.5 rounded-lg text-xs transition-colors"
-              style={{
-                background: bidirectional ? 'var(--accent-dim)' : 'var(--faint)',
-                color: bidirectional ? 'var(--accent)' : 'var(--muted)',
-                border: `1px solid ${bidirectional ? 'rgba(230,57,70,0.25)' : 'var(--border)'}`,
-              }}
-            >
-              <ArrowLeftRight size={11} />
-              Bidirectional
-            </button>
+            <>
+              <button
+                onClick={() => setTypedMode(t => !t)}
+                className="flex items-center gap-1.5 px-3 py-1.5 rounded-lg text-xs transition-colors"
+                style={{
+                  background: typedMode ? 'var(--accent-dim)' : 'var(--faint)',
+                  color: typedMode ? 'var(--accent)' : 'var(--muted)',
+                  border: `1px solid ${typedMode ? 'rgba(230,57,70,0.25)' : 'var(--border)'}`,
+                }}
+              >
+                <Keyboard size={11} />
+                Type
+              </button>
+              <button
+                onClick={() => setBidirectional(b => !b)}
+                className="flex items-center gap-1.5 px-3 py-1.5 rounded-lg text-xs transition-colors"
+                style={{
+                  background: bidirectional ? 'var(--accent-dim)' : 'var(--faint)',
+                  color: bidirectional ? 'var(--accent)' : 'var(--muted)',
+                  border: `1px solid ${bidirectional ? 'rgba(230,57,70,0.25)' : 'var(--border)'}`,
+                }}
+              >
+                <ArrowLeftRight size={11} />
+                Bidirectional
+              </button>
+            </>
           )}
           <button
             onClick={handleStudyToggle}
@@ -213,6 +228,7 @@ export default function Particles() {
               recordSession('particles', reviewed, ratings, durationMs)
             }
             onBack={() => { setFrozenQueue([]); setMode('browse'); }}
+            typedMode={typedMode}
           />
         )
       ) : (

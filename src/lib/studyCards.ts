@@ -104,28 +104,26 @@ export function buildKanaCards(): StudyCard[] {
 }
 
 export function buildKanjiCards(): StudyCard[] {
-  return kanjiEntries.flatMap(k => [
-    {
-      cardKey: `kanji:${k.id}:j`,
-      deckId: 'kanji',
-      direction: 'jp-en' as const,
-      front: { primary: k.kanji },
-      back: {
-        primary: k.meanings.join(', '),
-        secondary: [k.onyomi.join('・'), k.kunyomi.join('・')].filter(Boolean).join('  ·  '),
+  return kanjiEntries.flatMap(k => {
+    const breakdown = k.radicals?.map(r => ({ char: r.char, meanings: [r.meaning] }));
+    const readings = [k.onyomi.join('・'), k.kunyomi.join('・')].filter(Boolean).join('  ·  ');
+    return [
+      {
+        cardKey: `kanji:${k.id}:j`,
+        deckId: 'kanji',
+        direction: 'jp-en' as const,
+        front: { primary: k.kanji },
+        back: { primary: k.meanings.join(', '), secondary: readings, breakdown },
       },
-    },
-    {
-      cardKey: `kanji:${k.id}:e`,
-      deckId: 'kanji',
-      direction: 'en-jp' as const,
-      front: { primary: k.meanings.join(', ') },
-      back: {
-        primary: k.kanji,
-        secondary: [k.onyomi.join('・'), k.kunyomi.join('・')].filter(Boolean).join('  ·  '),
+      {
+        cardKey: `kanji:${k.id}:e`,
+        deckId: 'kanji',
+        direction: 'en-jp' as const,
+        front: { primary: k.meanings.join(', ') },
+        back: { primary: k.kanji, secondary: readings },
       },
-    },
-  ]);
+    ];
+  });
 }
 
 export function buildParticleCards(): StudyCard[] {

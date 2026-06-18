@@ -1,6 +1,6 @@
 import { useState, useMemo } from 'react';
 import { motion, AnimatePresence } from 'framer-motion';
-import { GraduationCap, ArrowLeftRight } from 'lucide-react';
+import { GraduationCap, ArrowLeftRight, Keyboard } from 'lucide-react';
 import { kanjiEntries, kanjiGroups, GROUP_ORDER, type KanjiEntry } from '../data/kanji';
 import { useDeck } from '../hooks/useDeck';
 import { useProgress } from '../hooks/useProgress';
@@ -86,6 +86,23 @@ function KanjiCard({ entry, stateJ, stateE }: {
                   </p>
                 </div>
               </div>
+              {entry.radicals && entry.radicals.length > 0 && (
+                <div className="mt-4 pt-3" style={{ borderTop: '1px solid var(--border)' }}>
+                  <p className="text-[10px] font-mono uppercase tracking-widest mb-2" style={{ color: 'var(--muted)' }}>Components</p>
+                  <div className="flex flex-wrap gap-2">
+                    {entry.radicals.map(r => (
+                      <span
+                        key={r.char}
+                        className="flex items-center gap-1.5 px-2.5 py-1 rounded-lg text-xs"
+                        style={{ background: `${ACCENT}10`, border: `1px solid ${ACCENT}25` }}
+                      >
+                        <span className="jp font-bold text-sm" style={{ color: ACCENT }}>{r.char}</span>
+                        <span style={{ color: 'var(--muted)' }}>{r.meaning}</span>
+                      </span>
+                    ))}
+                  </div>
+                </div>
+              )}
               <div className="mt-4 pt-3" style={{ borderTop: '1px solid var(--border)' }}>
                 <div className="flex flex-wrap gap-x-4 gap-y-1 text-[11px] font-mono" style={{ color: 'var(--muted)' }}>
                   <span>recognition: {formatInterval(undefined)}</span>
@@ -106,6 +123,7 @@ export default function Kanji() {
   const maxNew = useMemo(() => loadSettings().maxNewCards, []);
   const [mode, setMode]               = useState<Mode>('browse');
   const [bidirectional, setBidirectional] = useState(false);
+  const [typedMode, setTypedMode]     = useState(false);
   const [frozenQueue, setFrozenQueue] = useState<StudyCard[]>([]);
   const [groupFilter, setGroupFilter] = useState<KanjiEntry['group'] | 'all'>('all');
 
@@ -147,18 +165,32 @@ export default function Kanji() {
         </div>
         <div className="flex items-center gap-2">
           {mode === 'study' && (
-            <button
-              onClick={() => setBidirectional(b => !b)}
-              className="flex items-center gap-1.5 px-3 py-1.5 rounded-lg text-xs transition-colors"
-              style={{
-                background: bidirectional ? `${ACCENT}20` : 'var(--faint)',
-                color: bidirectional ? ACCENT : 'var(--muted)',
-                border: `1px solid ${bidirectional ? `${ACCENT}40` : 'var(--border)'}`,
-              }}
-            >
-              <ArrowLeftRight size={11} />
-              Recall
-            </button>
+            <>
+              <button
+                onClick={() => setTypedMode(t => !t)}
+                className="flex items-center gap-1.5 px-3 py-1.5 rounded-lg text-xs transition-colors"
+                style={{
+                  background: typedMode ? `${ACCENT}20` : 'var(--faint)',
+                  color: typedMode ? ACCENT : 'var(--muted)',
+                  border: `1px solid ${typedMode ? `${ACCENT}40` : 'var(--border)'}`,
+                }}
+              >
+                <Keyboard size={11} />
+                Type
+              </button>
+              <button
+                onClick={() => setBidirectional(b => !b)}
+                className="flex items-center gap-1.5 px-3 py-1.5 rounded-lg text-xs transition-colors"
+                style={{
+                  background: bidirectional ? `${ACCENT}20` : 'var(--faint)',
+                  color: bidirectional ? ACCENT : 'var(--muted)',
+                  border: `1px solid ${bidirectional ? `${ACCENT}40` : 'var(--border)'}`,
+                }}
+              >
+                <ArrowLeftRight size={11} />
+                Recall
+              </button>
+            </>
           )}
           <button
             onClick={handleStudyToggle}
@@ -210,6 +242,7 @@ export default function Kanji() {
               recordSession('kanji', reviewed, ratings, durationMs)
             }
             onBack={() => { setFrozenQueue([]); setMode('browse'); }}
+            typedMode={typedMode}
           />
         )
       ) : (

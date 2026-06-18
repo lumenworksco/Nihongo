@@ -1,6 +1,6 @@
 import { useState, useMemo } from 'react';
 import { motion, AnimatePresence } from 'framer-motion';
-import { Search, RotateCcw, ChevronLeft, ChevronRight, BookOpen, Grid, GraduationCap, ArrowLeftRight, ChevronDown, EyeOff, Eye } from 'lucide-react';
+import { Search, RotateCcw, ChevronLeft, ChevronRight, BookOpen, Grid, GraduationCap, ArrowLeftRight, ChevronDown, EyeOff, Eye, Keyboard } from 'lucide-react';
 import { cltCards, cltCategories, type CLTCard, type CLTCategory } from '../data/clt';
 import { useDeck } from '../hooks/useDeck';
 import { useProgress } from '../hooks/useProgress';
@@ -231,6 +231,7 @@ export default function CLT() {
   const [flashIndex, setFlashIndex]     = useState(0);
   const [statusFilter, setStatusFilter] = useState<CardStatus | 'all'>('all');
   const [frozenQueue, setFrozenQueue]   = useState<StudyCard[]>([]);
+  const [typedMode, setTypedMode]       = useState(false);
 
   const handleModeChange = (newMode: Mode) => {
     if (newMode === 'study' && mode !== 'study') setFrozenQueue([...studyQueue]);
@@ -296,7 +297,19 @@ export default function CLT() {
       {/* ── STUDY MODE ── */}
       {mode === 'study' && (
         <>
-          <div className="flex justify-end mb-4">
+          <div className="flex justify-end gap-2 mb-4">
+            <button
+              onClick={() => setTypedMode(t => !t)}
+              className="flex items-center gap-1.5 px-3 py-1.5 rounded-lg text-xs transition-colors"
+              style={{
+                background: typedMode ? 'var(--accent-dim)' : 'var(--faint)',
+                color:      typedMode ? 'var(--accent)'     : 'var(--muted)',
+                border: `1px solid ${typedMode ? 'rgba(230,57,70,0.25)' : 'var(--border)'}`,
+              }}
+            >
+              <Keyboard size={11} />
+              Type
+            </button>
             <button
               onClick={() => setBidirectional(b => !b)}
               className="flex items-center gap-1.5 px-3 py-1.5 rounded-lg text-xs transition-colors"
@@ -329,6 +342,7 @@ export default function CLT() {
                 recordSession('clt', reviewed, ratings, durationMs)
               }
               onBack={() => handleModeChange('browse')}
+              typedMode={typedMode}
             />
           )}
         </>
